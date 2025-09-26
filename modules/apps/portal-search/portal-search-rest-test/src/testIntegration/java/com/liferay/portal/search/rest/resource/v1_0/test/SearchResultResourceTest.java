@@ -80,8 +80,6 @@ import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
 import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
-import com.liferay.search.experiences.model.SXPBlueprint;
-import com.liferay.search.experiences.service.SXPBlueprintLocalService;
 
 import java.io.Serializable;
 
@@ -379,7 +377,6 @@ public class SearchResultResourceTest extends BaseSearchResultResourceTestCase {
 		_testPostSearchPageWithGroupERCAndGroupIdScope();
 		_testPostSearchPageWithGroupERCScope();
 		_testPostSearchPageWithGroupIdScope();
-		_testPostSearchPageWithHighlightConfiguration();
 		_testPostSearchPageWithLocalizedTextObjectField();
 		_testPostSearchPageWithKeywords();
 		_testPostSearchPageWithMultipleGroupIdsScope();
@@ -389,7 +386,6 @@ public class SearchResultResourceTest extends BaseSearchResultResourceTestCase {
 		_testPostSearchPageWithTagFacetConfiguration();
 		_testPostSearchPageWithTypeFacetConfiguration();
 		_testPostSearchPageWithUserFacetConfiguration();
-		_testPostSearchPageWithoutHighlightConfiguration();
 		_testPostSearchPageZeroResults();
 	}
 
@@ -589,45 +585,6 @@ public class SearchResultResourceTest extends BaseSearchResultResourceTestCase {
 			_ddmStructure.getStructureId(), null, _serviceContext);
 	}
 
-	private SXPBlueprint _addSXPBlueprint(boolean highlightingEnabled)
-		throws Exception {
-
-		JSONObject configurationJSONObject = JSONUtil.put(
-			"advancedConfiguration",
-			JSONUtil.put(
-				"source",
-				JSONUtil.put(
-					"fetchSource", true
-				).put(
-					"includes",
-					JSONFactoryUtil.createJSONArray(
-					).put(
-						"fullName"
-					)
-				))
-		).put(
-			"generalConfiguration",
-			JSONUtil.put(
-				"searchableAssetTypes",
-				JSONUtil.put("com.liferay.portal.kernel.model.User"))
-		).put(
-			"queryConfiguration", JSONUtil.put("applyIndexerClauses", true)
-		);
-
-		if (highlightingEnabled) {
-			configurationJSONObject.put(
-				"highlightConfiguration",
-				_createSXPBlueprintHighlightConfigurationJSON());
-		}
-
-		return _sxpBlueprintLocalService.addSXPBlueprint(
-			null, _user.getUserId(), configurationJSONObject.toString(),
-			Collections.singletonMap(_locale, StringPool.BLANK), null,
-			StringPool.BLANK,
-			Collections.singletonMap(_locale, RandomTestUtil.randomString()),
-			_serviceContext);
-	}
-
 	private SearchPage<SearchResult> _assertFacetConfiguration(
 			boolean anyMatch, String entryClassNames,
 			Map<String, Object> facetAttributes, String facetName,
@@ -703,33 +660,6 @@ public class SearchResultResourceTest extends BaseSearchResultResourceTestCase {
 
 		Assert.assertEquals(
 			Arrays.toString(expectedValues), String.valueOf(titles));
-	}
-
-	private JSONObject _createSXPBlueprintHighlightConfigurationJSON() {
-		return JSONUtil.put(
-			"fields",
-			JSONUtil.put(
-				"fullName",
-				JSONUtil.put(
-					"fragment_size", 100
-				).put(
-					"number_of_fragments", 10
-				))
-		).put(
-			"post_tags",
-			JSONFactoryUtil.createJSONArray(
-			).put(
-				"</liferay-hl>"
-			)
-		).put(
-			"pre_tags",
-			JSONFactoryUtil.createJSONArray(
-			).put(
-				"<liferay-hl>"
-			)
-		).put(
-			"require_field_match", true
-		);
 	}
 
 	private String _getEndpoint(Map<String, String> parameters)
@@ -843,30 +773,6 @@ public class SearchResultResourceTest extends BaseSearchResultResourceTestCase {
 				"entryClassNames", entryClassNames
 			).put(
 				"scope", String.valueOf(testGroup.getGroupId())
-			).build(),
-			searchRequestBody);
-	}
-
-	private SearchPage<SearchResult>
-			_postSearchPageWithSXPBlueprintConfiguration(
-				String entryClassNames, String keywords,
-				SXPBlueprint sxpBlueprint)
-		throws Exception {
-
-		SearchRequestBody searchRequestBody = new SearchRequestBody() {
-			{
-				attributes = HashMapBuilder.<String, Object>put(
-					"search.experiences.blueprint.external.reference.code",
-					sxpBlueprint.getExternalReferenceCode()
-				).build();
-			}
-		};
-
-		return _postSearchPage(
-			HashMapBuilder.put(
-				"entryClassNames", entryClassNames
-			).put(
-				"search", keywords
 			).build(),
 			searchRequestBody);
 	}
@@ -1190,31 +1096,6 @@ public class SearchResultResourceTest extends BaseSearchResultResourceTestCase {
 			searchPage, _journalArticle.getTitle(_locale));
 	}
 
-	private void _testPostSearchPageWithHighlightConfiguration()
-		throws Exception {
-
-		if (Objects.equals(_searchEngine.getVendor(), "Solr")) {
-			return;
-		}
-
-		SearchPage<SearchResult> searchPage =
-			_postSearchPageWithSXPBlueprintConfiguration(
-				_user.getModelClassName(), _user.getFullName(),
-				_addSXPBlueprint(true));
-
-		List<SearchResult> searchResults = ListUtil.fromCollection(
-			searchPage.getItems());
-
-		Assert.assertFalse(searchResults.isEmpty());
-
-		int count = ListUtil.count(
-			searchResults,
-			searchResult -> Objects.equals(
-				searchResult.getTitle(), _getUserHighlightedFullName()));
-
-		Assert.assertTrue(count >= 1);
-	}
-
 	private void _testPostSearchPageWithKeywords() throws Exception {
 		SearchPage<SearchResult> searchPage = _postSearchPage(
 			HashMapBuilder.put(
@@ -1370,38 +1251,6 @@ public class SearchResultResourceTest extends BaseSearchResultResourceTestCase {
 				"path", "ddmFieldArray"
 			).build(),
 			"nested", "test", "test");
-	}
-
-	private void _testPostSearchPageWithoutHighlightConfiguration()
-		throws Exception {
-
-		if (Objects.equals(_searchEngine.getVendor(), "Solr")) {
-			return;
-		}
-
-		SearchPage<SearchResult> searchPage =
-			_postSearchPageWithSXPBlueprintConfiguration(
-				_user.getModelClassName(), _user.getFullName(),
-				_addSXPBlueprint(false));
-
-		List<SearchResult> searchResults = ListUtil.fromCollection(
-			searchPage.getItems());
-
-		Assert.assertFalse(searchResults.isEmpty());
-
-		int count = ListUtil.count(
-			searchResults,
-			searchResult -> Objects.equals(
-				searchResult.getTitle(), _user.getFullName()));
-
-		Assert.assertTrue(count >= 1);
-
-		Assert.assertEquals(
-			0,
-			ListUtil.count(
-				searchResults,
-				searchResult -> Objects.equals(
-					searchResult.getTitle(), _getUserHighlightedFullName())));
 	}
 
 	private void _testPostSearchPageWithSiteFacetConfiguration()
@@ -1612,9 +1461,6 @@ public class SearchResultResourceTest extends BaseSearchResultResourceTestCase {
 	private SearchEngineInformation _searchEngineInformation;
 
 	private ServiceContext _serviceContext;
-
-	@Inject
-	private SXPBlueprintLocalService _sxpBlueprintLocalService;
 
 	private User _user;
 
