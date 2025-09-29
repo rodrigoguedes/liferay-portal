@@ -11,6 +11,8 @@ import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Summary;
+import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.search.spi.model.result.contributor.ModelSummaryContributor;
@@ -28,10 +30,11 @@ public class ObjectEntryModelSummaryContributor
 	public Summary getSummary(
 		Document document, Locale locale, String snippet) {
 
-		return new Summary(_getTitle(document, locale), _getContent(document));
+		return new Summary(
+			locale, _getTitle(document, locale), _getContent(document, locale));
 	}
 
-	private String _getContent(Document document) {
+	private String _getContent(Document document, Locale locale) {
 		StringBundler sb = new StringBundler();
 
 		Map<String, Field> fields = document.getFields();
@@ -57,12 +60,50 @@ public class ObjectEntryModelSummaryContributor
 		String content = sb.toString();
 
 		if (Validator.isBlank(content)) {
-			content = StringUtil.shorten(
-				document.get("objectEntryContent"), 300,
-				StringPool.TRIPLE_PERIOD);
+			Locale defaultLocale = LocaleUtil.fromLanguageId(
+				GetterUtil.getString(
+					document.get("defaultLanguageId"),
+					LanguageUtil.getLanguageId(LocaleUtil.getSiteDefault())));
+
+			content = _getLocalizedObjectEntryContent(
+				document, locale, defaultLocale);
 		}
 
 		return content;
+	}
+
+	private String _getLocalizedObjectEntryContent(
+		Document document, Locale locale) {
+
+		String languageId = LanguageUtil.getLanguageId(locale);
+
+		String content = document.get("objectEntryContent_" + languageId);
+
+		if (!Validator.isBlank(content)) {
+			return content;
+		}
+
+		return StringPool.BLANK;
+	}
+
+	private String _getLocalizedObjectEntryContent(
+		Document document, Locale locale, Locale defaultLocale) {
+
+		String content = _getLocalizedObjectEntryContent(document, locale);
+
+		if (Validator.isBlank(content) && !locale.equals(defaultLocale)) {
+			content = _getLocalizedObjectEntryContent(document, defaultLocale);
+		}
+
+		if (Validator.isBlank(content)) {
+			content = document.get("objectEntryContent");
+		}
+
+		if (Validator.isBlank(content)) {
+			return StringPool.BLANK;
+		}
+
+		return StringUtil.shorten(content, 300, StringPool.TRIPLE_PERIOD);
 	}
 
 	private String _getTitle(Document document, Locale locale) {
