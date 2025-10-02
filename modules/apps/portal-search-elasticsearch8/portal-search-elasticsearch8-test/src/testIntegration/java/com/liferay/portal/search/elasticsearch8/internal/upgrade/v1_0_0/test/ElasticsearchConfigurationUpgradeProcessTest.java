@@ -1,0 +1,199 @@
+/**
+ * SPDX-FileCopyrightText: (c) 2000 Liferay, Inc. https://liferay.com
+ * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
+ */
+
+package com.liferay.portal.search.elasticsearch8.internal.upgrade.v1_0_0.test;
+
+import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.test.rule.AggregateTestRule;
+import com.liferay.portal.kernel.upgrade.UpgradeProcess;
+import com.liferay.portal.kernel.upgrade.UpgradeStep;
+import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
+import com.liferay.portal.search.elasticsearch8.configuration.ElasticsearchConfiguration;
+import com.liferay.portal.test.rule.Inject;
+import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
+import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
+import com.liferay.portal.upgrade.registry.UpgradeStepRegistrator;
+
+import java.util.Dictionary;
+import java.util.Objects;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import org.osgi.service.cm.Configuration;
+import org.osgi.service.cm.ConfigurationAdmin;
+
+/**
+ * @author Petteri Karttunen
+ */
+@RunWith(Arquillian.class)
+public class ElasticsearchConfigurationUpgradeProcessTest {
+
+	@ClassRule
+	@Rule
+	public static final AggregateTestRule aggregateTestRule =
+		new AggregateTestRule(
+			new LiferayIntegrationTestRule(),
+			PermissionCheckerMethodTestRule.INSTANCE);
+
+	@Before
+	public void setUp() throws Exception {
+		Configuration elasticsearch7Configuration =
+			_getConfiguration(com.liferay.portal.search.elasticsearch7.configuration.ElasticsearchConfiguration.class);
+
+		if (elasticsearch7Configuration.getProperties() != null) {
+			_elasticsearch7OriginalProperties =
+				elasticsearch7Configuration.getProperties();
+		}
+
+		_addDeprecatedConfiguration(elasticsearch7Configuration);
+
+		Configuration elasticsearch8Configuration =
+			_getConfiguration(ElasticsearchConfiguration.class);
+
+		if (elasticsearch8Configuration.getProperties() != null) {
+			_elasticsearch8OriginalProperties = elasticsearch8Configuration.getProperties();
+		}
+
+		_addDeprecatedConfiguration(elasticsearch8Configuration);
+	}
+
+	private void _addDeprecatedConfiguration(Configuration configuration) throws Exception {
+		configuration.update(HashMapDictionaryBuilder.putAll(
+				configuration.getProperties()
+			).put(
+				"discoveryZenPingUnicastHostsPort", "9300-9400"
+			).put(
+				"embeddedHttpPort", 9201
+			).put(
+				"operationMode", "REMOTE"
+			).put(
+				"productionModeEnabled", Boolean.FALSE
+			).put(
+				"restClientLoggerLevel", "ERROR"
+			).put(
+				"sidecarHttpPort", 0
+			).put(
+				"trackTotalHits", Boolean.TRUE
+			).build());
+	}
+
+	@After
+	public void tearDown() throws Exception {
+		_restoreConfiguration(
+			com.liferay.portal.search.elasticsearch7.configuration.ElasticsearchConfiguration.class,
+			_elasticsearch7OriginalProperties);
+
+		_restoreConfiguration(ElasticsearchConfiguration.class,
+			_elasticsearch8OriginalProperties);
+	}
+
+	private void _restoreConfiguration(Class clazz,
+		Dictionary<String, Object> originalProperties) throws Exception {
+		if (originalProperties != null) {
+			Configuration configuration = _getConfiguration(clazz);
+
+			configuration.update(originalProperties);
+		}
+	}
+
+	@Test
+	public void testUpgrade() throws Exception {
+		Configuration elasticsearch8Configuration = _getConfiguration(ElasticsearchConfiguration.class);
+
+		Dictionary<String, Object> properties = elasticsearch8Configuration.getProperties();
+
+		Assert.assertEquals(
+			"REMOTE", GetterUtil.getString(properties.get("operationMode")));
+		Assert.assertEquals(
+			Boolean.FALSE,
+			GetterUtil.getBoolean(properties.get("productionModeEnabled")));
+		Assert.assertEquals(
+			9201, GetterUtil.getInteger(properties.get("embeddedHttpPort")));
+		Assert.assertEquals(
+			0, GetterUtil.getInteger(properties.get("sidecarHttpPort")));
+		Assert.assertEquals(
+			"9300-9400",
+			GetterUtil.getString(
+				properties.get("discoveryZenPingUnicastHostsPort")));
+		Assert.assertEquals(
+			Boolean.TRUE,
+			GetterUtil.getBoolean(properties.get("trackTotalHits")));
+		Assert.assertEquals(
+			"ERROR",
+			GetterUtil.getString(properties.get("restClientLoggerLevel")));
+
+		UpgradeProcess upgradeProcess = _getUpgradeProcess();
+
+		upgradeProcess.upgrade();
+
+		Configuration elasticsearch8UpgradedConfiguration = _getConfiguration(ElasticsearchConfiguration.class);
+
+		Dictionary<String, Object> upgradedProperties =
+			elasticsearch8UpgradedConfiguration.getProperties();
+
+		Assert.assertNull(upgradedProperties.get("operationMode"));
+		Assert.assertEquals(
+			Boolean.TRUE,
+			GetterUtil.getBoolean(
+				upgradedProperties.get("productionModeEnabled")));
+		Assert.assertNull(upgradedProperties.get("embeddedHttpPort"));
+		Assert.assertEquals(
+			9201,
+			GetterUtil.getInteger(upgradedProperties.get("sidecarHttpPort")));
+		Assert.assertNull(upgradedProperties.get("operationMode"));
+		Assert.assertNull(
+			upgradedProperties.get("discoveryZenPingUnicastHostsPort"));
+		Assert.assertNull(upgradedProperties.get("trackTotalHits"));
+		Assert.assertNull(upgradedProperties.get("restClientLoggerLevel"));
+	}
+
+	private Configuration _getConfiguration(Class clazz) throws Exception {
+		return _configurationAdmin.getConfiguration(
+			clazz.getName(), StringPool.QUESTION);
+	}
+
+	private UpgradeProcess _getUpgradeProcess() {
+		UpgradeProcess[] upgradeProcesses = new UpgradeProcess[1];
+
+		_upgradeStepRegistrator.register(
+			(fromSchemaVersionString, toSchemaVersionString, upgradeSteps) -> {
+				for (UpgradeStep upgradeStep : upgradeSteps) {
+					Class<? extends UpgradeStep> clazz = upgradeStep.getClass();
+
+					if (Objects.equals(clazz.getName(), _CLASS_NAME)) {
+						upgradeProcesses[0] = (UpgradeProcess)upgradeStep;
+
+						break;
+					}
+				}
+			});
+
+		return upgradeProcesses[0];
+	}
+
+	private static final String _CLASS_NAME =
+		"com.liferay.portal.search.elasticsearch8.internal.upgrade.v1_0_0." +
+		"ElasticsearchConfigurationUpgradeProcess";
+
+	@Inject(
+		filter = "(&(component.name=com.liferay.portal.search.elasticsearch8.internal.upgrade.registry.ElasticsearchUpgradeStepRegistrator))"
+	)
+	private static UpgradeStepRegistrator _upgradeStepRegistrator;
+
+	@Inject
+	private ConfigurationAdmin _configurationAdmin;
+
+	private Dictionary<String, Object> _elasticsearch8OriginalProperties;
+	private Dictionary<String, Object> _elasticsearch7OriginalProperties;
+
+}
