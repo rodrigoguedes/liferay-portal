@@ -60,4 +60,5 @@ public class ElasticsearchConfigurationUpgradeProcess extends UpgradeProcess {
 	}
 
 	private final ConfigurationAdmin _configurationAdmin;
+
 }

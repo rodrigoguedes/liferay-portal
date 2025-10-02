@@ -16,8 +16,8 @@ import org.osgi.service.component.annotations.Reference;
  * @author Rodrigo Guedes de Souza
  */
 @Component(service = UpgradeStepRegistrator.class)
-public class ElasticsearchUpgradeStepRegistrator implements
-	UpgradeStepRegistrator {
+public class ElasticsearchUpgradeStepRegistrator
+	implements UpgradeStepRegistrator {
 
 	@Override
 	public void register(Registry registry) {
