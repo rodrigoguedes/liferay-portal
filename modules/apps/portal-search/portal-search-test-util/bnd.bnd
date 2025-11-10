@@ -6,6 +6,7 @@ Export-Package:\
 	com.liferay.portal.search.test.rule.logging,\
 	com.liferay.portal.search.test.util,\
 	com.liferay.portal.search.test.util.exportimport,\
+	com.liferay.portal.search.test.util.rest.resource.v1_0,\
 	com.liferay.portal.search.test.util.logging
 Import-Package:\
 	!com.liferay.portal.search.internal.*,\
