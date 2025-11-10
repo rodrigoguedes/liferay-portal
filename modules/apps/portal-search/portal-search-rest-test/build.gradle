@@ -1,11 +1,18 @@
+//bundle {
+//	includeTransitiveDependencies = true
+//}
+
 dependencies {
 	testIntegrationImplementation group: "com.fasterxml.jackson.core", name: "jackson-annotations", version: "2.18.2"
 	testIntegrationImplementation group: "com.fasterxml.jackson.core", name: "jackson-core", version: "2.18.2"
 	testIntegrationImplementation group: "com.fasterxml.jackson.core", name: "jackson-databind", version: "2.18.2"
 	testIntegrationImplementation group: "com.liferay", name: "jakarta.ws.rs", version: "3.1.0.LIFERAY-PATCHED-1"
 	testIntegrationImplementation group: "jakarta.annotation", name: "jakarta.annotation-api", version: "2.1.1"
+	testIntegrationImplementation project(":apps:change-tracking:change-tracking-api")
 	testIntegrationImplementation project(":apps:dynamic-data-mapping:dynamic-data-mapping-api")
 	testIntegrationImplementation project(":apps:dynamic-data-mapping:dynamic-data-mapping-test-util")
+	testIntegrationImplementation project(":apps:expando:expando-test-util")
+	testIntegrationImplementation project(":apps:export-import:export-import-api")
 	testIntegrationImplementation project(":apps:journal:journal-api")
 	testIntegrationImplementation project(":apps:journal:journal-test-util")
 	testIntegrationImplementation project(":apps:layout:layout-test-util")
@@ -15,11 +22,16 @@ dependencies {
 	testIntegrationImplementation project(":apps:object:object-test-util")
 	testIntegrationImplementation project(":apps:portal-configuration:portal-configuration-test-util")
 	testIntegrationImplementation project(":apps:portal-odata:portal-odata-api")
+	testIntegrationImplementation project(":apps:portal-search:portal-search")
 	testIntegrationImplementation project(":apps:portal-search:portal-search-api")
+	testIntegrationImplementation project(":apps:portal-search:portal-search-engine-adapter-api")
 	testIntegrationImplementation project(":apps:portal-search:portal-search-rest-api")
 	testIntegrationImplementation project(":apps:portal-search:portal-search-rest-client")
+	testIntegrationImplementation project(":apps:portal-search:portal-search-spi")
 	testIntegrationImplementation project(":apps:portal-search:portal-search-test-util")
 	testIntegrationImplementation project(":apps:portal-vulcan:portal-vulcan-api")
-	testIntegrationImplementation project(":dxp:apps:search-experiences:search-experiences-api")
+	testIntegrationImplementation project(":core:petra:petra-function")
+	testIntegrationImplementation project(":core:petra:petra-reflect")
+	testIntegrationImplementation project(":core:petra:petra-string")
 	testIntegrationImplementation project(":test:arquillian-extension-junit-bridge")
 }
