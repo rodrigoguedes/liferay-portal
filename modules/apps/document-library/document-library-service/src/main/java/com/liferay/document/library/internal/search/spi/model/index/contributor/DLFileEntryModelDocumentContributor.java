@@ -191,6 +191,8 @@ public class DLFileEntryModelDocumentContributor
 			if (text != null) {
 				document.addText(fieldName, text);
 
+				//TODO: Use TextEmbeddingContentHelper<DLFileEntry>
+
 				_textEmbeddingDocumentContributor.contribute(
 					document, dlFileEntry,
 					StringBundler.concat(
