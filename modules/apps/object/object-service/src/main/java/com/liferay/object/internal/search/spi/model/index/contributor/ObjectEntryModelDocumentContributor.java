@@ -43,6 +43,7 @@ import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.search.ml.embedding.text.TextEmbeddingDocumentContributor;
+import com.liferay.portal.search.ml.embedding.text.util.TextEmbeddingContentHelper;
 import com.liferay.portal.search.spi.model.index.contributor.ModelDocumentContributor;
 
 import java.io.Serializable;
@@ -51,12 +52,10 @@ import java.math.BigDecimal;
 
 import java.text.Format;
 
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 
 /**
  * @author Marco Leo
@@ -116,7 +115,7 @@ public class ObjectEntryModelDocumentContributor
 	}
 
 	private void _appendToContent(
-		ObjectContentHelper objectContentHelper, String locale,
+		TextEmbeddingContentHelper<ObjectEntry> objectContentHelper, String locale,
 		String objectFieldName, String valueString) {
 
 		StringBundler sb = new StringBundler(4);
@@ -127,17 +126,17 @@ public class ObjectEntryModelDocumentContributor
 		sb.append(StringPool.COMMA_AND_SPACE);
 
 		if (locale != null) {
-			objectContentHelper.contributeToLocale(locale, sb);
+			objectContentHelper.appendToLocale(locale, sb);
 		}
 		else {
-			objectContentHelper.contributeToAll(sb);
+			objectContentHelper.appendToAll(sb);
 		}
 	}
 
 	private void _contribute(
 		Document document, FieldArray fieldArray, String fieldName,
 		Object fieldValue, String locale,
-		ObjectContentHelper objectContentHelper,
+		TextEmbeddingContentHelper<ObjectEntry> objectContentHelper,
 		ObjectDefinition objectDefinition, ObjectEntry objectEntry,
 		ObjectField objectField, Map<String, Serializable> values) {
 
@@ -336,9 +335,14 @@ public class ObjectEntryModelDocumentContributor
 			_objectFieldLocalService.getObjectFields(
 				objectEntry.getObjectDefinitionId(), false);
 
-		ObjectContentHelper objectContentHelper = new ObjectContentHelper(
-			objectDefinition.isEnableLocalization(), objectEntry, objectFields,
-			_textEmbeddingDocumentContributor);
+		TextEmbeddingContentHelper<ObjectEntry> objectContentHelper = new TextEmbeddingContentHelper<>(
+			objectEntry.getCompanyId(),
+			true,
+			objectEntry,
+			0,
+			true,
+			_textEmbeddingDocumentContributor
+		);
 
 		for (ObjectField objectField : objectFields) {
 			if (objectField.isLocalized()) {
@@ -372,10 +376,8 @@ public class ObjectEntryModelDocumentContributor
 			}
 		}
 
-		objectContentHelper.trim();
-
-		document.add(
-			new Field("objectEntryContent", objectContentHelper.getContent()));
+//		document.add(
+//			new Field("objectEntryContent", objectContentHelper.getContent()));
 
 		objectContentHelper.getLocalizedContentMap();
 
@@ -456,12 +458,12 @@ public class ObjectEntryModelDocumentContributor
 	}
 
 	private void _contributeTextEmbeddings(
-		Document document, ObjectContentHelper objectContentHelper,
+		Document document, TextEmbeddingContentHelper<ObjectEntry> objectContentHelper,
 		ObjectDefinition objectDefinition, ObjectEntry objectEntry) {
 
 		if (!objectDefinition.isEnableLocalization()) {
-			_textEmbeddingDocumentContributor.contribute(
-				document, objectEntry, objectContentHelper.getContent());
+//			_textEmbeddingDocumentContributor.contribute(
+//				document, objectEntry, objectContentHelper.getContent());
 
 			return;
 		}
@@ -559,95 +561,95 @@ public class ObjectEntryModelDocumentContributor
 	private final TextEmbeddingDocumentContributor
 		_textEmbeddingDocumentContributor;
 
-	private static class ObjectContentHelper {
-
-		public void contributeToAll(StringBundler sb) {
-			_contentSB.append(sb);
-
-			for (StringBundler localizedContentSB :
-					_localizedContentSBMap.values()) {
-
-				localizedContentSB.append(sb);
-			}
-		}
-
-		public void contributeToLocale(String locale, StringBundler sb) {
-			_contentSB.append(sb);
-
-			StringBundler localizedContentSB = _localizedContentSBMap.get(
-				locale);
-
-			if (localizedContentSB != null) {
-				localizedContentSB.append(sb);
-			}
-		}
-
-		public String getContent() {
-			return _contentSB.toString();
-		}
-
-		public Map<String, String> getLocalizedContentMap() {
-			if (_localizedContentSBMap.isEmpty()) {
-				return Collections.emptyMap();
-			}
-
-			Map<String, String> localizedContentMap = new TreeMap<>();
-
-			for (Map.Entry<String, StringBundler> localizedContentEntry :
-					_localizedContentSBMap.entrySet()) {
-
-				StringBundler sb = localizedContentEntry.getValue();
-
-				if (sb.index() > 0) {
-					localizedContentMap.put(
-						localizedContentEntry.getKey(), sb.toString());
-				}
-			}
-
-			return localizedContentMap;
-		}
-
-		public void trim() {
-			if (_contentSB.index() > 0) {
-				_contentSB.setIndex(_contentSB.index() - 1);
-			}
-
-			for (StringBundler localizedContentSB :
-					_localizedContentSBMap.values()) {
-
-				if (localizedContentSB.index() > 0) {
-					localizedContentSB.setIndex(localizedContentSB.index() - 1);
-				}
-			}
-		}
-
-		private ObjectContentHelper(
-			boolean localizationEnabled, ObjectEntry objectEntry,
-			List<ObjectField> objectFields,
-			TextEmbeddingDocumentContributor textEmbeddingDocumentContributor) {
-
-			_contentSB = new StringBundler(objectFields.size());
-
-			if (!localizationEnabled ||
-				!FeatureFlagManagerUtil.isEnabled(
-					objectEntry.getCompanyId(), "LPS-122920")) {
-
-				return;
-			}
-
-			for (String languageId :
-					textEmbeddingDocumentContributor.getLanguageIds(
-						objectEntry)) {
-
-				_localizedContentSBMap.put(
-					languageId, new StringBundler(objectFields.size() * 4));
-			}
-		}
-
-		private final StringBundler _contentSB;
-		private final Map<String, StringBundler> _localizedContentSBMap =
-			new TreeMap<>();
-
-	}
+//	private static class ObjectContentHelper {
+//
+//		public void contributeToAll(StringBundler sb) {
+//			_contentSB.append(sb);
+//
+//			for (StringBundler localizedContentSB :
+//					_localizedContentSBMap.values()) {
+//
+//				localizedContentSB.append(sb);
+//			}
+//		}
+//
+//		public void contributeToLocale(String locale, StringBundler sb) {
+//			_contentSB.append(sb);
+//
+//			StringBundler localizedContentSB = _localizedContentSBMap.get(
+//				locale);
+//
+//			if (localizedContentSB != null) {
+//				localizedContentSB.append(sb);
+//			}
+//		}
+//
+//		public String getContent() {
+//			return _contentSB.toString();
+//		}
+//
+//		public Map<String, String> getLocalizedContentMap() {
+//			if (_localizedContentSBMap.isEmpty()) {
+//				return Collections.emptyMap();
+//			}
+//
+//			Map<String, String> localizedContentMap = new TreeMap<>();
+//
+//			for (Map.Entry<String, StringBundler> localizedContentEntry :
+//					_localizedContentSBMap.entrySet()) {
+//
+//				StringBundler sb = localizedContentEntry.getValue();
+//
+//				if (sb.index() > 0) {
+//					localizedContentMap.put(
+//						localizedContentEntry.getKey(), sb.toString());
+//				}
+//			}
+//
+//			return localizedContentMap;
+//		}
+//
+//		public void trim() {
+//			if (_contentSB.index() > 0) {
+//				_contentSB.setIndex(_contentSB.index() - 1);
+//			}
+//
+//			for (StringBundler localizedContentSB :
+//					_localizedContentSBMap.values()) {
+//
+//				if (localizedContentSB.index() > 0) {
+//					localizedContentSB.setIndex(localizedContentSB.index() - 1);
+//				}
+//			}
+//		}
+//
+//		private ObjectContentHelper(
+//			boolean localizationEnabled, ObjectEntry objectEntry,
+//			List<ObjectField> objectFields,
+//			TextEmbeddingDocumentContributor textEmbeddingDocumentContributor) {
+//
+//			_contentSB = new StringBundler(objectFields.size());
+//
+//			if (!localizationEnabled ||
+//				!FeatureFlagManagerUtil.isEnabled(
+//					objectEntry.getCompanyId(), "LPS-122920")) {
+//
+//				return;
+//			}
+//
+//			for (String languageId :
+//					textEmbeddingDocumentContributor.getLanguageIds(
+//						objectEntry)) {
+//
+//				_localizedContentSBMap.put(
+//					languageId, new StringBundler(objectFields.size() * 4));
+//			}
+//		}
+//
+//		private final StringBundler _contentSB;
+//		private final Map<String, StringBundler> _localizedContentSBMap =
+//			new TreeMap<>();
+//
+//	}
 
 }
