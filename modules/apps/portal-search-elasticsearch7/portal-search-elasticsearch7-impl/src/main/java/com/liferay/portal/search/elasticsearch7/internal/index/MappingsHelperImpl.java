@@ -12,6 +12,7 @@ import com.liferay.portal.kernel.json.JSONException;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -24,6 +25,7 @@ import com.liferay.portal.search.spi.index.configuration.contributor.helper.Mapp
 import java.io.IOException;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import org.elasticsearch.action.ActionResponse;
@@ -45,13 +47,15 @@ public class MappingsHelperImpl implements MappingsHelper {
 	public MappingsHelperImpl(
 		String indexName, IndicesClient indicesClient, JSONFactory jsonFactory,
 		String overrideMappings,
-		SearchEngineInformation searchEngineInformation) {
+		SearchEngineInformation searchEngineInformation,
+		Language language) {
 
 		_indexName = indexName;
 		_indicesClient = indicesClient;
 		_jsonFactory = jsonFactory;
 		_overrideMappings = overrideMappings;
 		_searchEngineInformation = searchEngineInformation;
+		this._language = language;
 	}
 
 	public void putDefaultOrOverrideMappings() {
@@ -79,9 +83,7 @@ public class MappingsHelperImpl implements MappingsHelper {
 			mappingsJSONObject.toString(), XContentType.JSON);
 	}
 
-	private String _addTextEmbeddingDynamicTemplates(String mappings) {
-		JSONObject jsonObject = _createJSONObject(mappings);
-
+	private void _addTextEmbeddingDynamicTemplates(JSONObject jsonObject) {
 		JSONArray jsonArray = jsonObject.getJSONArray("dynamic_templates");
 
 		for (int dimension :
@@ -103,8 +105,27 @@ public class MappingsHelperImpl implements MappingsHelper {
 							"text_embedding_", dimension, StringPool.STAR)
 					)));
 		}
+	}
 
-		return jsonObject.toString();
+	private void _setupElasticsearchTextEmbedding(JSONObject jsonObject) {
+		JSONObject sourceJsonObject = _jsonFactory.createJSONObject();
+		jsonObject.put("_source", sourceJsonObject);
+
+		JSONArray excludesJsonArray = _jsonFactory.createJSONArray();
+		sourceJsonObject.put("excludes", excludesJsonArray);
+
+		JSONObject propertiesJsonObject = jsonObject.getJSONObject("properties");
+
+		for (Locale locale : _language.getAvailableLocales()) {
+			String esTextEmbeddingName = "es_text_embedding_" + locale.toString();
+			excludesJsonArray.put(esTextEmbeddingName);
+
+			JSONObject elasticsearchTextEmbedding = _jsonFactory.createJSONObject();
+			elasticsearchTextEmbedding.put("type", "semantic_text");
+			elasticsearchTextEmbedding.put("inference_id", "openai_embeddings");
+
+			propertiesJsonObject.put(esTextEmbeddingName, elasticsearchTextEmbedding);
+		}
 	}
 
 	private JSONObject _createJSONObject(String mappings) {
@@ -149,12 +170,17 @@ public class MappingsHelperImpl implements MappingsHelper {
 			return _removeLegacyDocumentType(_overrideMappings);
 		}
 
-		String defaultMappings = _addTextEmbeddingDynamicTemplates(
-			ResourceUtil.getResourceAsString(
-				getClass(), IndexMappingsConstants.INDEX_MAPPINGS_FILE_NAME));
+		String mappings = ResourceUtil.getResourceAsString(
+			getClass(), IndexMappingsConstants.INDEX_MAPPINGS_FILE_NAME);
+
+		JSONObject defatulMappingsJsonObject = _createJSONObject(mappings);
+
+		_addTextEmbeddingDynamicTemplates(defatulMappingsJsonObject);
+
+		_setupElasticsearchTextEmbedding(defatulMappingsJsonObject);
 
 		return _getMappingsJSONObjectWithMergedDynamicTemplates(
-			StringPool.BLANK, defaultMappings);
+			StringPool.BLANK, defatulMappingsJsonObject.toString());
 	}
 
 	private JSONObject _getMappingsJSONObjectWithMergedDynamicTemplates(
@@ -272,5 +298,6 @@ public class MappingsHelperImpl implements MappingsHelper {
 	private final JSONFactory _jsonFactory;
 	private final String _overrideMappings;
 	private final SearchEngineInformation _searchEngineInformation;
+	private final Language _language;
 
 }

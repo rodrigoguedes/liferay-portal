@@ -11,6 +11,7 @@ import com.liferay.osgi.service.tracker.collections.list.ServiceTrackerListFacto
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONFactory;
+import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.CompanyConstants;
@@ -68,7 +69,8 @@ public class CompanyIndexHelper {
 		MappingsHelperImpl mappingsHelperImpl = new MappingsHelperImpl(
 			indexName, indicesClient, _jsonFactory,
 			_elasticsearchConfigurationWrapper.overrideTypeMappings(),
-			_searchEngineInformation);
+			_searchEngineInformation,
+			_language);
 
 		mappingsHelperImpl.setDefaultOrOverrideMappings(createIndexRequest);
 
@@ -147,7 +149,8 @@ public class CompanyIndexHelper {
 		MappingsHelperImpl mappingsHelperImpl = new MappingsHelperImpl(
 			indexName, indicesClient, _jsonFactory,
 			_elasticsearchConfigurationWrapper.overrideTypeMappings(),
-			_searchEngineInformation);
+			_searchEngineInformation,
+			_language);
 
 		mappingsHelperImpl.putDefaultOrOverrideMappings();
 
@@ -396,7 +399,8 @@ public class CompanyIndexHelper {
 						indexName, indicesClient, _jsonFactory,
 						_elasticsearchConfigurationWrapper.
 							overrideTypeMappings(),
-						_searchEngineInformation));
+						_searchEngineInformation,
+						_language));
 			},
 			IndexFactoryCompanyIdRegistryUtil.getCompanyIds());
 	}
@@ -510,5 +514,8 @@ public class CompanyIndexHelper {
 
 	@Reference
 	private SearchEngineInformation _searchEngineInformation;
+
+	@Reference
+	private Language _language;
 
 }
