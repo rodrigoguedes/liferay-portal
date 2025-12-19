@@ -16,4 +16,6 @@ public interface TextEmbeddingRetriever
 
 	public Double[] getTextEmbedding(String providerName, String text);
 
+	public String _getTextExcerpt(String providerName, String text);
+
 }

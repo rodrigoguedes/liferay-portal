@@ -258,6 +258,31 @@ public class TextEmbeddingRetrieverImpl implements TextEmbeddingRetriever {
 		_addTextEmbeddingProvider(name, textEmbeddingProvider);
 	}
 
+	public String _getTextExcerpt(String providerName, String text) {
+		TextEmbeddingProvider textEmbeddingProvider =
+			_textEmbeddingProviders.get(providerName);
+
+		if (textEmbeddingProvider == null) {
+			return "";
+		}
+
+		EmbeddingProviderConfiguration embeddingProviderConfiguration =
+			getEmbeddingProviderConfiguration(providerName);
+
+		if (embeddingProviderConfiguration == null) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					"Configuration for provider " + providerName +
+					" not found");
+			}
+
+			return "";
+		}
+
+		return _getTextExcerpt(embeddingProviderConfiguration, text);
+	}
+
+
 	private String _getTextExcerpt(
 		EmbeddingProviderConfiguration embeddingProviderConfiguration,
 		String text) {

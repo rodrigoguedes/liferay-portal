@@ -78,6 +78,11 @@ public class TextEmbeddingDocumentContributorImpl
 		}
 
 		_addTextEmbeddingField(document, languageId, textEmbedding);
+
+		String textExcerpt = _textEmbeddingRetriever._getTextExcerpt(
+			embeddingProviderConfiguration.getProviderName(), text);
+
+		_newAddTextEmbeddingField(document, languageId, textExcerpt);
 	}
 
 	@Override
@@ -95,12 +100,17 @@ public class TextEmbeddingDocumentContributorImpl
 			return;
 		}
 
+		// TODO BEGIN: Condition to check if Elastic Stack is being used.
 		Double[] textEmbedding = _textEmbeddingRetriever.getTextEmbedding(
 			embeddingProviderConfiguration.getProviderName(), text);
 
 		if (textEmbedding.length == 0) {
 			return;
 		}
+
+		String textExcerpt = _textEmbeddingRetriever._getTextExcerpt(
+			embeddingProviderConfiguration.getProviderName(), text);
+		// TODO END: Condition to check if Elastic Stack is being used.
 
 		List<String> languageIds = Arrays.asList(
 			embeddingProviderConfiguration.getLanguageIds());
@@ -115,6 +125,8 @@ public class TextEmbeddingDocumentContributorImpl
 			}
 
 			_addTextEmbeddingField(document, languageId, textEmbedding);
+
+			_newAddTextEmbeddingField(document, languageId, textExcerpt);
 		}
 	}
 
@@ -200,6 +212,11 @@ public class TextEmbeddingDocumentContributorImpl
 			"text_embedding_", dimensions, StringPool.UNDERLINE, languageId);
 	}
 
+	protected String getNewTextEmbeddingFieldName(String languageId) {
+		return StringBundler.concat(
+			"es_text_embedding", StringPool.UNDERLINE, languageId);
+	}
+
 	protected <T extends BaseModel<T>> boolean isIndexableStatus(T model) {
 		if (model instanceof WorkflowedModel) {
 			WorkflowedModel workflowedModel = (WorkflowedModel)model;
@@ -230,6 +247,17 @@ public class TextEmbeddingDocumentContributorImpl
 		field.setNumericClass(Double.class);
 		field.setTokenized(false);
 		field.setValues(ArrayUtil.toStringArray(textEmbedding));
+
+		document.add(field);
+	}
+
+	private void _newAddTextEmbeddingField(
+		Document document, String languageId, String text) {
+
+		Field field = new Field(getNewTextEmbeddingFieldName(languageId));
+
+		field.setTokenized(true);
+		field.setValue(text);
 
 		document.add(field);
 	}
