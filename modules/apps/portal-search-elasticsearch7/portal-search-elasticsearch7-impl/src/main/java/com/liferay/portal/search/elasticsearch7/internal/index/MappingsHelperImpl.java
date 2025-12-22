@@ -7,6 +7,7 @@ package com.liferay.portal.search.elasticsearch7.internal.index;
 
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONException;
 import com.liferay.portal.kernel.json.JSONFactory;
@@ -177,7 +178,10 @@ public class MappingsHelperImpl implements MappingsHelper {
 
 		_addTextEmbeddingDynamicTemplates(defatulMappingsJsonObject);
 
-		_setupElasticsearchTextEmbedding(defatulMappingsJsonObject);
+		// TODO: Use Epic's FF when implementing the feature permanently.
+		if (FeatureFlagManagerUtil.isEnabled("LPS-122920")) {
+			_setupElasticsearchTextEmbedding(defatulMappingsJsonObject);
+		}
 
 		return _getMappingsJSONObjectWithMergedDynamicTemplates(
 			StringPool.BLANK, defatulMappingsJsonObject.toString());
