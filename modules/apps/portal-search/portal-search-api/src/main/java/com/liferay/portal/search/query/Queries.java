@@ -67,6 +67,8 @@ public interface Queries {
 
 	public IdsQuery ids();
 
+	public SemanticQuery semantic(String field, String query);
+
 	public MatchQuery match(String field, Object value);
 
 	public MatchAllQuery matchAll();

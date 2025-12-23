@@ -6,6 +6,7 @@
 package com.liferay.portal.search.engine.adapter.search;
 
 import com.liferay.portal.kernel.search.GroupBy;
+import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.search.Stats;
 import com.liferay.portal.search.collapse.Collapse;
 import com.liferay.portal.search.groupby.GroupByRequest;
@@ -319,6 +320,14 @@ public class SearchSearchRequest
 		_version = version;
 	}
 
+	public SearchContext getSearchContext() {
+		return _searchContext;
+	}
+
+	public void setSearchContext(SearchContext searchContext) {
+		_searchContext = searchContext;
+	}
+
 	private boolean _allFieldsSelected;
 	private String _alternateUidFieldName;
 	private Collapse _collapse;
@@ -348,5 +357,6 @@ public class SearchSearchRequest
 	private Map<String, Stats> _stats;
 	private String[] _storedFields;
 	private Boolean _version;
+	private SearchContext _searchContext;
 
 }

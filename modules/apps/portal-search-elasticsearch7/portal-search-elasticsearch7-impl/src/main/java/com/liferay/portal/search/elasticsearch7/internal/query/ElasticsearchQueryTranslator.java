@@ -38,6 +38,7 @@ import com.liferay.portal.search.query.GeoDistanceRangeQuery;
 import com.liferay.portal.search.query.GeoPolygonQuery;
 import com.liferay.portal.search.query.GeoShapeQuery;
 import com.liferay.portal.search.query.IdsQuery;
+import com.liferay.portal.search.query.SemanticQuery;
 import com.liferay.portal.search.query.MatchAllQuery;
 import com.liferay.portal.search.query.MatchPhrasePrefixQuery;
 import com.liferay.portal.search.query.MatchPhraseQuery;
@@ -502,6 +503,16 @@ public class ElasticsearchQueryTranslator
 		idsQueryBuilder.types(types.toArray(new String[0]));
 
 		return _addBoost(idsQuery, idsQueryBuilder);
+	}
+
+	@Override
+	public QueryBuilder visit(SemanticQuery semanticQuery) {
+		String json = String.format(
+			"{\"semantic\": {\"field\": \"%s\", \"query\": \"%s\"}}",
+			semanticQuery.getField(),
+			semanticQuery.getQuery()
+		);
+		return QueryBuilders.wrapperQuery(json);
 	}
 
 	@Override

@@ -44,6 +44,8 @@ public interface QueryVisitor<T> {
 
 	public T visit(IdsQuery idsQuery);
 
+	public T visit(SemanticQuery semanticQuery);
+
 	public T visit(MatchAllQuery matchAllQuery);
 
 	public T visit(MatchPhrasePrefixQuery matchPhrasePrefixQuery);

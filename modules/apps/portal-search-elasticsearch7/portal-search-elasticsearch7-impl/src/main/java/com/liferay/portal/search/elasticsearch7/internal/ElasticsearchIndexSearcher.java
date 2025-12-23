@@ -277,6 +277,7 @@ public class ElasticsearchIndexSearcher extends BaseIndexSearcher {
 		searchSearchRequest.setSelectedFieldNames(
 			queryConfig.getSelectedFieldNames());
 		searchSearchRequest.setStats(searchContext.getStats());
+		searchSearchRequest.setSearchContext(searchContext);
 
 		return searchSearchRequest;
 	}

@@ -5,6 +5,7 @@
 
 package com.liferay.portal.search.elasticsearch7.internal.search.engine.adapter.search;
 
+import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.search.filter.FilterTranslator;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
@@ -17,11 +18,13 @@ import com.liferay.portal.search.elasticsearch7.internal.facet.FacetTranslator;
 import com.liferay.portal.search.elasticsearch7.internal.legacy.query.ElasticsearchQueryTranslator;
 import com.liferay.portal.search.elasticsearch7.internal.stats.StatsTranslator;
 import com.liferay.portal.search.engine.adapter.search.BaseSearchRequest;
+import com.liferay.portal.search.engine.adapter.search.SearchSearchRequest;
 import com.liferay.portal.search.filter.ComplexQueryBuilderFactory;
 import com.liferay.portal.search.filter.ComplexQueryPart;
 import com.liferay.portal.search.index.IndexNameBuilder;
 import com.liferay.portal.search.pit.PointInTime;
 import com.liferay.portal.search.query.BooleanQuery;
+import com.liferay.portal.search.query.Queries;
 import com.liferay.portal.search.query.Query;
 import com.liferay.portal.search.query.QueryTranslator;
 import com.liferay.portal.search.rescore.Rescore;
@@ -93,7 +96,59 @@ public class CommonSearchSourceBuilderAssemblerImpl
 		SearchSourceBuilder searchSourceBuilder,
 		BaseSearchRequest baseSearchRequest) {
 
-		searchSourceBuilder.query(_getQueryBuilder(baseSearchRequest));
+		QueryBuilder queryBuilder = _getQueryBuilder(baseSearchRequest);
+
+		if (baseSearchRequest instanceof SearchSearchRequest) {
+			SearchSearchRequest searchSearchRequest =
+				(SearchSearchRequest)baseSearchRequest;
+
+			SearchContext searchContext = searchSearchRequest.getSearchContext();
+
+			if (searchContext != null) {
+				String keywords = searchContext.getKeywords();
+
+				if (keywords != null) {
+					Query semanticQuery = _queries.semantic("es_text_embedding_" + searchContext.getLocale().toString(), keywords);
+
+					queryBuilder = _translateQuery(semanticQuery);
+
+//					QueryBuilder semanticQueryBuilder = _translateQuery(semanticQuery);
+//
+//					if (queryBuilder instanceof BoolQueryBuilder) {
+//						((BoolQueryBuilder)queryBuilder).should(
+//							semanticQueryBuilder);
+//					}
+
+//					queryBuilder = _translateQuery(semanticQuery);
+//
+//					queryBuilder.
+//
+//					((BoolQueryBuilder) queryBuilder).filter();
+
+
+//					QueryBuilder semanticQueryBuilder = _translateQuery(semanticQuery);
+
+//					if (queryBuilder instanceof BoolQueryBuilder) {
+//						((BoolQueryBuilder)queryBuilder).should(
+//							semanticQueryBuilder);
+//					}
+//					else {
+//						BoolQueryBuilder boolQueryBuilder =
+//							QueryBuilders.boolQuery();
+//
+//						if (queryBuilder != null) {
+//							boolQueryBuilder.must(queryBuilder);
+//						}
+//
+//						boolQueryBuilder.should(semanticQueryBuilder);
+//
+//						queryBuilder = boolQueryBuilder;
+//					}
+				}
+			}
+		}
+
+		searchSourceBuilder.query(queryBuilder);
 	}
 
 	protected BoolQueryBuilder translate(
@@ -589,6 +644,9 @@ public class CommonSearchSourceBuilderAssemblerImpl
 	@Reference(target = "(search.engine.impl=Elasticsearch)")
 	private PipelineAggregationTranslator<PipelineAggregationBuilder>
 		_pipelineAggregationTranslator;
+
+	@Reference
+	private Queries _queries;
 
 	private final QueryTranslator<QueryBuilder> _queryTranslator =
 		new com.liferay.portal.search.elasticsearch7.internal.query.

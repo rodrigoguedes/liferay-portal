@@ -23,6 +23,7 @@ import com.liferay.portal.search.query.GeoDistanceRangeQuery;
 import com.liferay.portal.search.query.GeoPolygonQuery;
 import com.liferay.portal.search.query.GeoShapeQuery;
 import com.liferay.portal.search.query.IdsQuery;
+import com.liferay.portal.search.query.SemanticQuery;
 import com.liferay.portal.search.query.MatchAllQuery;
 import com.liferay.portal.search.query.MatchPhrasePrefixQuery;
 import com.liferay.portal.search.query.MatchPhraseQuery;
@@ -165,6 +166,11 @@ public class QueriesImpl implements Queries {
 	@Override
 	public IdsQuery ids() {
 		return new IdsQueryImpl();
+	}
+
+	@Override
+	public SemanticQuery semantic(String field, String query) {
+		return new SemanticQueryImpl(field, query);
 	}
 
 	@Override
