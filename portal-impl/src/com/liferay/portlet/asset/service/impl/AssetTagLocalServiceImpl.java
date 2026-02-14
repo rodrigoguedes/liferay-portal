@@ -11,9 +11,12 @@ import com.liferay.asset.kernel.exception.DuplicateTagException;
 import com.liferay.asset.kernel.exception.NoSuchTagException;
 import com.liferay.asset.kernel.model.AssetEntry;
 import com.liferay.asset.kernel.model.AssetTag;
+import com.liferay.asset.kernel.model.AssetTagGroupRelTable;
+import com.liferay.asset.kernel.model.AssetTagTable;
 import com.liferay.asset.kernel.service.AssetEntryLocalService;
 import com.liferay.asset.kernel.service.persistence.AssetEntryPersistence;
 import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.petra.sql.dsl.DSLQueryFactoryUtil;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
@@ -895,8 +898,90 @@ public class AssetTagLocalServiceImpl extends AssetTagLocalServiceBaseImpl {
 		CharPool.SLASH, CharPool.STAR, CharPool.TILDE
 	};
 
+	@Override
+	public int getAssetTagByGroupIdsAndGroupRelIdsCount(
+		long[] groups,long[] groupRelIds, String name) {
+		return dslQueryCount(
+			DSLQueryFactoryUtil.countDistinct(
+				AssetTagTable.INSTANCE.tagId
+			).from(
+				AssetTagTable.INSTANCE
+			).leftJoinOn(
+				AssetTagGroupRelTable.INSTANCE,
+				AssetTagGroupRelTable.INSTANCE.tagId.eq(
+					AssetTagTable.INSTANCE.tagId
+				)
+			).where(
+				AssetTagTable.INSTANCE.groupId.in(
+					ArrayUtil.toArray(groups)
+				).or(AssetTagGroupRelTable.INSTANCE.groupId.in(
+					ArrayUtil.toArray(groupRelIds)
+				)).withParentheses(
+				).and(
+					() -> {
+						if (Validator.isNull(name))
+							return null;
+
+						return AssetTagTable.INSTANCE.name.like(name);
+					}
+				)
+			)
+		);
+	}
+
+	@Override
+	public List<AssetTag> getAssetTagByGroupIdsAndGroupRelIds(long[] groups,
+		long[] groupRelIds, String name, int start, int end,
+			OrderByComparator<AssetTag> orderByComparator) {
+
+		return dslQuery(
+			DSLQueryFactoryUtil.selectDistinct(
+				AssetTagTable.INSTANCE
+			).from(
+				AssetTagTable.INSTANCE
+			).leftJoinOn(
+				AssetTagGroupRelTable.INSTANCE,
+				AssetTagGroupRelTable.INSTANCE.tagId.eq(
+					AssetTagTable.INSTANCE.tagId
+				)
+			).where(
+				AssetTagTable.INSTANCE.groupId.in(
+					ArrayUtil.toArray(groups)
+				).or(AssetTagGroupRelTable.INSTANCE.groupId.in(
+					ArrayUtil.toArray(groupRelIds)
+				)).withParentheses(
+				).and(
+					() -> {
+						if (Validator.isNull(name))
+							return null;
+
+						return AssetTagTable.INSTANCE.name.like(name);
+					}
+				)
+			).orderBy(
+				AssetTagTable.INSTANCE, orderByComparator
+			).limit(
+				start, end
+			)
+		);
+	}
+
+	@Override
+	public List<Group> getSpaceGroups(long[] groupIds) throws PortalException {
+		return ListUtil.filter(
+			_groupLocalService.getGroups(groupIds),
+			group -> {
+				int depotEntryType = GetterUtil.getInteger(
+					group.getTypeSettingsProperty("depotEntryType"));
+
+				return depotEntryType == _DEPOT_ENTRY_TYPE_SPACE;
+			});
+	}
+
 	private static final Log _log = LogFactoryUtil.getLog(
 		AssetTagLocalServiceImpl.class);
+
+	private static final int _DEPOT_ENTRY_TYPE_SPACE = 1;
 
 	@BeanReference(type = AssetEntryLocalService.class)
 	private AssetEntryLocalService _assetEntryLocalService;

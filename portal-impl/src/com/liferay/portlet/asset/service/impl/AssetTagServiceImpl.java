@@ -13,12 +13,15 @@ import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.security.access.control.AccessControlled;
 import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.Autocomplete;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -27,7 +30,9 @@ import com.liferay.portlet.asset.service.permission.AssetTagsPermission;
 import com.liferay.portlet.asset.util.comparator.AssetTagNameComparator;
 import com.liferay.util.dao.orm.CustomSQLUtil;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Provides the remote service for accessing, adding, checking, deleting,
@@ -203,6 +208,37 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 		long[] groupIds, String name, int start, int end,
 		OrderByComparator<AssetTag> orderByComparator) {
 
+		try {
+			List<Group> spaceGroups = assetTagLocalService.getSpaceGroups(groupIds);
+
+			if (ListUtil.isNotEmpty(spaceGroups)) {
+				List<Long> spaceGroupsIds = ListUtil.toList(
+					spaceGroups, Group.GROUP_ID_ACCESSOR);
+
+				spaceGroupsIds.add(_GROUP_ID_ALL);
+
+				Set<Long> filteredGroupIds = new LinkedHashSet<>();
+				for (long groupId : groupIds) {
+					filteredGroupIds.add(groupId);
+				}
+
+				for (long groupId : spaceGroupsIds) {
+					filteredGroupIds.remove(groupId);
+				}
+
+				return sanitize(
+					assetTagLocalService.getAssetTagByGroupIdsAndGroupRelIds(
+						ArrayUtil.toLongArray(filteredGroupIds),
+						ArrayUtil.toLongArray(spaceGroupsIds), name, start,
+						end, orderByComparator));
+			}
+		}
+		catch (PortalException portalException) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(portalException);
+			}
+		}
+
 		if (Validator.isNull(name)) {
 			return sanitize(
 				assetTagPersistence.findByGroupId(
@@ -232,6 +268,35 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 
 	@Override
 	public int getTagsCount(long[] groupIds, String name) {
+		try {
+			List<Group> spaceGroups = assetTagLocalService.getSpaceGroups(groupIds);
+
+			if (ListUtil.isNotEmpty(spaceGroups)) {
+				List<Long> spaceGroupsIds = ListUtil.toList(
+					spaceGroups, Group.GROUP_ID_ACCESSOR);
+
+				spaceGroupsIds.add(_GROUP_ID_ALL);
+
+				Set<Long> filteredGroupIds = new LinkedHashSet<>();
+				for (long groupId : groupIds) {
+					filteredGroupIds.add(groupId);
+				}
+
+				for (long groupId : spaceGroupsIds) {
+					filteredGroupIds.remove(groupId);
+				}
+
+				return assetTagLocalService.getAssetTagByGroupIdsAndGroupRelIdsCount(
+					ArrayUtil.toLongArray(filteredGroupIds),
+					ArrayUtil.toLongArray(spaceGroupsIds), name);
+			}
+		}
+		catch (PortalException portalException) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(portalException);
+			}
+		}
+
 		if (Validator.isNull(name)) {
 			return assetTagPersistence.countByGroupId(groupIds);
 		}
@@ -348,5 +413,7 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		AssetTagServiceImpl.class);
+
+		private static final long _GROUP_ID_ALL = -1;
 
 }
