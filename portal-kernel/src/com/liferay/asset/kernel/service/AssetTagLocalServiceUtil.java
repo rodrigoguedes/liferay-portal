@@ -434,6 +434,21 @@ public class AssetTagLocalServiceUtil {
 			externalReferenceCode, groupId);
 	}
 
+	public static List<AssetTag> getAssetTagByGroupIdsAndGroupRelIds(
+		long[] groups, long[] groupRelIds, String name, int start, int end,
+		OrderByComparator<AssetTag> orderByComparator) {
+
+		return getService().getAssetTagByGroupIdsAndGroupRelIds(
+			groups, groupRelIds, name, start, end, orderByComparator);
+	}
+
+	public static int getAssetTagByGroupIdsAndGroupRelIdsCount(
+		long[] groups, long[] groupRelIds, String name) {
+
+		return getService().getAssetTagByGroupIdsAndGroupRelIdsCount(
+			groups, groupRelIds, name);
+	}
+
 	/**
 	 * Returns the asset tag matching the UUID and group.
 	 *
@@ -607,6 +622,13 @@ public class AssetTagLocalServiceUtil {
 		throws PortalException {
 
 		return getService().getPersistedModel(primaryKeyObj);
+	}
+
+	public static List<com.liferay.portal.kernel.model.Group> getSpaceGroups(
+			long[] groupIds)
+		throws PortalException {
+
+		return getService().getSpaceGroups(groupIds);
 	}
 
 	/**

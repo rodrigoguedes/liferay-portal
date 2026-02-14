@@ -380,6 +380,15 @@ public interface AssetTagLocalService
 			String externalReferenceCode, long groupId)
 		throws PortalException;
 
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public List<AssetTag> getAssetTagByGroupIdsAndGroupRelIds(
+		long[] groups, long[] groupRelIds, String name, int start, int end,
+		OrderByComparator<AssetTag> orderByComparator);
+
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public int getAssetTagByGroupIdsAndGroupRelIdsCount(
+		long[] groups, long[] groupRelIds, String name);
+
 	/**
 	 * Returns the asset tag matching the UUID and group.
 	 *
@@ -523,6 +532,9 @@ public interface AssetTagLocalService
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public PersistedModel getPersistedModel(Serializable primaryKeyObj)
 		throws PortalException;
+
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public List<Group> getSpaceGroups(long[] groupIds) throws PortalException;
 
 	/**
 	 * Returns the asset tag with the primary key.
