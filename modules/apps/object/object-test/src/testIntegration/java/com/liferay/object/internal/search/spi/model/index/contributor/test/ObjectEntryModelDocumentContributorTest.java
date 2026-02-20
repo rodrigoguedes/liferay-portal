@@ -24,6 +24,7 @@ import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.search.spi.model.index.contributor.ModelDocumentContributor;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
@@ -58,15 +59,90 @@ public class ObjectEntryModelDocumentContributorTest {
 		new LiferayIntegrationTestRule();
 
 	@Test
-	public void testContribute() throws Exception {
+	public void testContributeLocalizedFields() throws Exception {
 		String objectFieldName = "a" + RandomTestUtil.randomString();
+
+		ObjectDefinition objectDefinition =
+			_addModifiableSystemObjectDefinition(true, objectFieldName);
+
+		String englishObjectFieldValue = RandomTestUtil.randomString();
+		String portugueseObjectFieldValue =
+			objectFieldName + RandomTestUtil.randomString();
+
+		ObjectEntry objectEntry = ObjectEntryTestUtil.addObjectEntry(
+			TestPropsValues.getGroupId(), objectDefinition,
+			HashMapBuilder.<String, Serializable>put(
+				objectFieldName, englishObjectFieldValue
+			).put(
+				objectFieldName + "_i18n",
+				HashMapBuilder.<String, Serializable>put(
+					"en_US", englishObjectFieldValue
+				).put(
+					"pt_BR", portugueseObjectFieldValue
+				).build()
+			).build());
+
+		Document document = new DocumentImpl();
+
+		ModelDocumentContributor<ObjectEntry>
+			objectEntryModelDocumentContributor =
+				_getObjectEntryModelDocumentContributor(objectDefinition);
+
+		objectEntryModelDocumentContributor.contribute(document, objectEntry);
+
+		_assertObjectEntryContentField(
+			document, englishObjectFieldValue,
+			Field.getLocalizedName(LocaleUtil.US, "objectEntryContent"),
+			objectFieldName);
+		_assertObjectEntryContentField(
+			document, portugueseObjectFieldValue,
+			Field.getLocalizedName(LocaleUtil.BRAZIL, "objectEntryContent"),
+			objectFieldName);
+
+		Assert.assertNull(document.getField("objectEntryContent"));
+	}
+
+	@Test
+	public void testContributeNonlocalizedFields() throws Exception {
+		String objectFieldName = "a" + RandomTestUtil.randomString();
+
+		ObjectDefinition objectDefinition =
+			_addModifiableSystemObjectDefinition(false, objectFieldName);
+
+		String objectFieldValue = RandomTestUtil.randomString();
+
+		ObjectEntry objectEntry = ObjectEntryTestUtil.addObjectEntry(
+			TestPropsValues.getGroupId(), objectDefinition,
+			HashMapBuilder.<String, Serializable>put(
+				objectFieldName, objectFieldValue
+			).build());
+
+		Document document = new DocumentImpl();
+
+		ModelDocumentContributor<ObjectEntry>
+			objectEntryModelDocumentContributor =
+				_getObjectEntryModelDocumentContributor(objectDefinition);
+
+		objectEntryModelDocumentContributor.contribute(document, objectEntry);
+
+		_assertObjectEntryContentField(
+			document, objectFieldValue, "objectEntryContent", objectFieldName);
+
+		Assert.assertNull(
+			document.getField(
+				Field.getLocalizedName(LocaleUtil.US, "objectEntryContent")));
+	}
+
+	private ObjectDefinition _addModifiableSystemObjectDefinition(
+			boolean localized, String objectFieldName)
+		throws Exception {
 
 		ObjectField objectField = ObjectFieldUtil.createObjectField(
 			0, ObjectFieldConstants.BUSINESS_TYPE_TEXT, null,
 			ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
 			RandomTestUtil.randomString(), objectFieldName, false, true);
 
-		objectField.setLocalized(true);
+		objectField.setLocalized(localized);
 
 		ObjectDefinition modifiableSystemObjectDefinition =
 			ObjectDefinitionTestUtil.addModifiableSystemObjectDefinition(
@@ -77,48 +153,23 @@ public class ObjectEntryModelDocumentContributorTest {
 				ObjectDefinitionConstants.SCOPE_SITE, null, 1,
 				Arrays.asList(objectField));
 
-		modifiableSystemObjectDefinition =
-			_objectDefinitionLocalService.publishSystemObjectDefinition(
-				TestPropsValues.getUserId(),
-				modifiableSystemObjectDefinition.getObjectDefinitionId());
+		return _objectDefinitionLocalService.publishSystemObjectDefinition(
+			TestPropsValues.getUserId(),
+			modifiableSystemObjectDefinition.getObjectDefinitionId());
+	}
 
-		String objectFieldValue = RandomTestUtil.randomString();
+	private void _assertObjectEntryContentField(
+		Document document, String expectedValue, String fieldName,
+		String objectFieldName) {
 
-		ObjectEntry objectEntry = ObjectEntryTestUtil.addObjectEntry(
-			TestPropsValues.getGroupId(), modifiableSystemObjectDefinition,
-			HashMapBuilder.<String, Serializable>put(
-				objectFieldName, objectFieldValue
-			).put(
-				objectFieldName + "_i18n",
-				HashMapBuilder.<String, Serializable>put(
-					"en_US", objectFieldValue
-				).put(
-					"pt_BR", objectFieldValue + "pt_BR"
-				).build()
-			).build());
-
-		Document document = new DocumentImpl();
-
-		ModelDocumentContributor<ObjectEntry>
-			objectEntryModelDocumentContributor =
-				_getObjectEntryModelDocumentContributor(
-					modifiableSystemObjectDefinition);
-
-		objectEntryModelDocumentContributor.contribute(document, objectEntry);
-
-		Field field = document.getField("objectEntryContent");
+		Field field = document.getField(fieldName);
 
 		String value = field.getValue();
 
 		Assert.assertTrue(
 			value,
 			value.contains(
-				StringBundler.concat(objectFieldName, ": ", objectFieldValue)));
-		Assert.assertTrue(
-			value,
-			value.contains(
-				StringBundler.concat(
-					objectFieldName, ": ", objectFieldValue, "pt_BR")));
+				StringBundler.concat(objectFieldName, ": ", expectedValue)));
 	}
 
 	private ModelDocumentContributor<ObjectEntry>
