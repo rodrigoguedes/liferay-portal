@@ -112,6 +112,7 @@ import java.io.Serializable;
 import java.text.Collator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -845,37 +846,26 @@ public class EditAssetListDisplayContext {
 			return _referencedModelsGroupIds;
 		}
 
-		_referencedModelsGroupIds =
+		long[] currentAndAncestorSiteGroupIds =
 			PortalUtil.getCurrentAndAncestorSiteGroupIds(
 				getSelectedGroupIds(), true);
 
-		try {
-			Set<Long> connectedGroupIds = new LinkedHashSet<>();
+		Set<Long> connectedGroupIds = new LinkedHashSet<>();
 
-			for (long groupId : _referencedModelsGroupIds) {
-				connectedGroupIds.add(groupId);
+		for (long groupId : currentAndAncestorSiteGroupIds) {
+			connectedGroupIds.add(groupId);
 
-				List<DepotEntry> depotEntries =
-					_depotEntryService.getCurrentAndGroupConnectedDepotEntries(
-						groupId, DepotConstants.TYPE_ANY, QueryUtil.ALL_POS,
-						QueryUtil.ALL_POS);
+			List<DepotEntry> depotEntries =
+				_depotEntryService.getCurrentAndGroupConnectedDepotEntries(
+					groupId, DepotConstants.TYPE_ANY, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS);
 
-				for (DepotEntry depotEntry : depotEntries) {
-					connectedGroupIds.add(depotEntry.getGroupId());
-				}
-			}
-
-			_referencedModelsGroupIds = ArrayUtil.toLongArray(
-				connectedGroupIds);
-		}
-		catch (PortalException portalException) {
-			if (_log.isWarnEnabled()) {
-				_log.warn(
-					"Unable to retrieve connected group IDs, defaulting to " +
-						"site groups",
-					portalException);
+			for (DepotEntry depotEntry : depotEntries) {
+				connectedGroupIds.add(depotEntry.getGroupId());
 			}
 		}
+
+		_referencedModelsGroupIds = ArrayUtil.toLongArray(connectedGroupIds);
 
 		return _referencedModelsGroupIds;
 	}
@@ -1056,9 +1046,9 @@ public class EditAssetListDisplayContext {
 		Set<AssetVocabulary> groupsVocabularies = new LinkedHashSet<>(
 			_assetVocabularyService.getGroupsVocabularies(groupIds));
 
-		long[] assetVocabularyGroupRelGroupIds = groupIds;
-
 		if (_hasSpaceGroups(groupIds)) {
+			long[] assetVocabularyGroupRelGroupIds = groupIds;
+
 			if (!ArrayUtil.contains(assetVocabularyGroupRelGroupIds, -1)) {
 				assetVocabularyGroupRelGroupIds = ArrayUtil.append(
 					assetVocabularyGroupRelGroupIds, -1);
@@ -1408,17 +1398,6 @@ public class EditAssetListDisplayContext {
 			classType.getName());
 	}
 
-	private Group _getCMSGroup(List<Group> spaceGroups) throws PortalException {
-		if (!spaceGroups.isEmpty()) {
-			for (Group group : spaceGroups) {
-				return _groupService.getGroup(
-					group.getCompanyId(), GroupConstants.CMS);
-			}
-		}
-
-		return null;
-	}
-
 	private long[] _getDefaultClassNameIds() {
 		List<AssetRendererFactory<?>> assetRendererFactories = ListUtil.sort(
 			AssetRendererFactoryRegistryUtil.getAssetRendererFactories(
@@ -1467,26 +1446,6 @@ public class EditAssetListDisplayContext {
 			"segmentsEntryId",
 			assetListEntrySegmentsEntryRel.getSegmentsEntryId()
 		).buildString();
-	}
-
-	private List<Group> _getSpaceGroups(long[] groupIds)
-		throws PortalException {
-
-		List<Group> spaceGroups = new ArrayList<>();
-
-		if (ArrayUtil.isEmpty(groupIds)) {
-			return spaceGroups;
-		}
-
-		for (long groupId : groupIds) {
-			Group group = _groupService.getGroup(groupId);
-
-			if ((group != null) && _isSpace(group)) {
-				spaceGroups.add(group);
-			}
-		}
-
-		return spaceGroups;
 	}
 
 	private String _getTypeSettings() {
@@ -1544,7 +1503,7 @@ public class EditAssetListDisplayContext {
 		int depotEntryType = GetterUtil.getInteger(
 			group.getTypeSettingsProperty("depotEntryType"));
 
-		if (depotEntryType == _DEPOT_ENTRY_TYPE_SPACE) {
+		if (depotEntryType == DepotConstants.TYPE_SPACE) {
 			return true;
 		}
 
@@ -1552,11 +1511,8 @@ public class EditAssetListDisplayContext {
 	}
 
 	private long[] _resolveGroupIds(long[] groupIds) throws PortalException {
-		List<Group> spaceGroups = _getSpaceGroups(groupIds);
+		List<Long> groupIdList = new ArrayList<>()l;
 
-		if (ListUtil.isEmpty(spaceGroups)) {
-			return groupIds;
-		}
 
 		Set<Long> finalGroupIds = new LinkedHashSet<>();
 
@@ -1564,11 +1520,13 @@ public class EditAssetListDisplayContext {
 			finalGroupIds.add(groupId);
 		}
 
-		for (Group group : spaceGroups) {
-			finalGroupIds.remove(group.getGroupId());
+		long[] spaceGroupIds = _getSpaceGroupIds(groupIds);
+
+		for (long groupId : spaceGroupIds) {
+			finalGroupIds.remove(groupId);
 		}
 
-		Group cmsGroup = _getCMSGroup(spaceGroups);
+		Group cmsGroup = _groupService.getGroup(_themeDisplay.getCompanyId(), GroupConstants.CMS);
 
 		if (cmsGroup != null) {
 			finalGroupIds.add(cmsGroup.getGroupId());
@@ -1627,8 +1585,6 @@ public class EditAssetListDisplayContext {
 	}
 
 	private static final long _DEFAULT_SUBTYPE_SELECTION_ID = -1;
-
-	private static final int _DEPOT_ENTRY_TYPE_SPACE = 1;
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		EditAssetListDisplayContext.class);
