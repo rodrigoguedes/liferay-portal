@@ -5,16 +5,9 @@
 
 package com.liferay.portal.search.elasticsearch8.internal.capabilities;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch.license.GetLicenseResponse;
-import co.elastic.clients.elasticsearch.license.LicenseStatus;
-import co.elastic.clients.elasticsearch.license.LicenseType;
-import co.elastic.clients.elasticsearch.license.get.LicenseInformation;
-
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.search.capabilities.ElasticsearchLicenseInformation;
 import com.liferay.portal.search.elasticsearch8.internal.connection.ElasticsearchConnectionManager;
+import com.liferay.portal.search.elasticsearch8.internal.web.cache.ElasticsearchLicenseWebCacheItem;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -28,59 +21,9 @@ public class ElasticsearchLicenseInformationImpl
 
 	@Override
 	public boolean supportsInferenceAPI() {
-		try {
-			ElasticsearchClient elasticsearchClient =
-				_elasticsearchConnectionManager.getElasticsearchClient();
-
-			if (elasticsearchClient == null) {
-				return false;
-			}
-
-			GetLicenseResponse getLicenseResponse = elasticsearchClient.license(
-			).get();
-
-			if (getLicenseResponse == null) {
-				return false;
-			}
-
-			LicenseInformation licenseInformation =
-				getLicenseResponse.license();
-
-			if ((licenseInformation == null) ||
-				(licenseInformation.status() != LicenseStatus.Active)) {
-
-				return false;
-			}
-
-			LicenseType type = licenseInformation.type();
-
-			if ((type == LicenseType.Trial) ||
-				(type == LicenseType.Enterprise)) {
-
-				return true;
-			}
-
-			return false;
-		}
-		catch (Exception exception) {
-			if (_log.isWarnEnabled()) {
-				_log.warn(
-					"Unable to query the Elasticsearch \"_license\" API: " +
-						exception.getMessage());
-			}
-
-			if (_log.isDebugEnabled()) {
-				_log.debug(
-					"Unable to query the Elasticsearch \"_license\" API",
-					exception);
-			}
-
-			return false;
-		}
+		return ElasticsearchLicenseWebCacheItem.get(
+			_elasticsearchConnectionManager);
 	}
-
-	private static final Log _log = LogFactoryUtil.getLog(
-		ElasticsearchLicenseInformationImpl.class);
 
 	@Reference
 	private ElasticsearchConnectionManager _elasticsearchConnectionManager;
