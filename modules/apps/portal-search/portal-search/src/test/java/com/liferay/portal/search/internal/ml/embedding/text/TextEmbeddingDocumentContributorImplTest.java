@@ -10,9 +10,12 @@ import com.liferay.document.library.kernel.model.DLFileEntry;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.Language;
+import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.search.Document;
+import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
@@ -21,6 +24,7 @@ import com.liferay.portal.search.capabilities.ExternalEmbeddingEligibility;
 import com.liferay.portal.search.configuration.SemanticSearchConfiguration;
 import com.liferay.portal.search.configuration.SemanticSearchConfigurationProvider;
 import com.liferay.portal.search.engine.SearchEngineInformation;
+import com.liferay.portal.search.internal.semantic.SemanticFieldNamesImpl;
 import com.liferay.portal.search.ml.embedding.text.TextEmbeddingRetriever;
 import com.liferay.portal.search.rest.dto.v1_0.EmbeddingProviderConfiguration;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
@@ -75,20 +79,16 @@ public class TextEmbeddingDocumentContributorImplTest {
 
 		Document document = Mockito.mock(Document.class);
 
-		try (MockedStatic<FeatureFlagManagerUtil>
-				featureFlagManagerUtilMockedStatic = Mockito.mockStatic(
-					FeatureFlagManagerUtil.class)) {
+		_addDocumentField(
+			document, "title_en_US", "How to configure the firewall");
+		_addDocumentField(document, "content", "Open the admin panel");
+		_addDocumentField(
+			document, "assetCategoryTitles_en_US", "Networking", "Security");
+		_addDocumentField(
+			document, "assetTagNames", "firewall", "security", "configuration");
 
-			featureFlagManagerUtilMockedStatic.when(
-				() -> FeatureFlagManagerUtil.isEnabled(
-					Mockito.anyLong(), Mockito.eq("LPD-11319"))
-			).thenReturn(
-				true
-			);
-
-			_textEmbeddingDocumentContributorImpl.contribute(
-				document, _getBlogsEntry(), RandomTestUtil.randomString());
-		}
+		_contributeWithBYOLLMProvider(
+			document, null, RandomTestUtil.randomString());
 
 		Mockito.verify(
 			_textEmbeddingRetriever, Mockito.never()
@@ -96,7 +96,14 @@ public class TextEmbeddingDocumentContributorImplTest {
 			Mockito.anyString(), Mockito.anyString()
 		);
 
-		Mockito.verifyNoInteractions(document);
+		Mockito.verify(
+			document
+		).addText(
+			"blogs_entry_en_US_semantic",
+			"Title: How to configure the firewall\nContent/Body: Open the " +
+				"admin panel\nCategorization: Networking, Security\nTags: " +
+					"firewall, security, configuration"
+		);
 	}
 
 	@Test
@@ -110,21 +117,13 @@ public class TextEmbeddingDocumentContributorImplTest {
 
 		Document document = Mockito.mock(Document.class);
 
-		try (MockedStatic<FeatureFlagManagerUtil>
-				featureFlagManagerUtilMockedStatic = Mockito.mockStatic(
-					FeatureFlagManagerUtil.class)) {
+		_addDocumentField(
+			document, "title_en_US", "How to configure the firewall");
+		_addDocumentField(document, "content", "Open the admin panel");
 
-			featureFlagManagerUtilMockedStatic.when(
-				() -> FeatureFlagManagerUtil.isEnabled(
-					Mockito.anyLong(), Mockito.eq("LPD-11319"))
-			).thenReturn(
-				true
-			);
-
-			_textEmbeddingDocumentContributorImpl.contribute(
-				document, LocaleUtil.toLanguageId(LocaleUtil.US),
-				_getBlogsEntry(), RandomTestUtil.randomString());
-		}
+		_contributeWithBYOLLMProvider(
+			document, LocaleUtil.toLanguageId(LocaleUtil.US),
+			RandomTestUtil.randomString());
 
 		Mockito.verify(
 			_textEmbeddingRetriever, Mockito.never()
@@ -132,7 +131,47 @@ public class TextEmbeddingDocumentContributorImplTest {
 			Mockito.anyString(), Mockito.anyString()
 		);
 
-		Mockito.verifyNoInteractions(document);
+		Mockito.verify(
+			document
+		).addText(
+			"blogs_entry_en_US_semantic",
+			"Title: How to configure the firewall\nContent/Body: Open the " +
+				"admin panel"
+		);
+	}
+
+	@Test
+	public void testContributeWithBYOLLMProviderWithMultipleLocales()
+		throws Exception {
+
+		_setSemanticSearchConfiguration(
+			new String[] {
+				LocaleUtil.toLanguageId(LocaleUtil.GERMAN),
+				LocaleUtil.toLanguageId(LocaleUtil.US)
+			},
+			new String[] {BlogsEntry.class.getName()}, _BYO_LLM_PROVIDER_NAME,
+			true);
+
+		Document document = Mockito.mock(Document.class);
+
+		_addDocumentField(document, "title_de", "Konfigurieren der Firewall");
+		_addDocumentField(
+			document, "title_en_US", "How to configure the firewall");
+
+		_contributeWithBYOLLMProvider(
+			document, null, RandomTestUtil.randomString());
+
+		Mockito.verify(
+			document
+		).addText(
+			"blogs_entry_de_semantic", "Title: Konfigurieren der Firewall"
+		);
+
+		Mockito.verify(
+			document
+		).addText(
+			"blogs_entry_en_US_semantic", "Title: How to configure the firewall"
+		);
 	}
 
 	@Test
@@ -207,6 +246,86 @@ public class TextEmbeddingDocumentContributorImplTest {
 			document
 		).add(
 			Mockito.any()
+		);
+	}
+
+	@Test
+	public void testContributeWithBYOLLMProviderWithoutFields()
+		throws Exception {
+
+		_setSemanticSearchConfiguration(
+			new String[] {LocaleUtil.toLanguageId(LocaleUtil.US)},
+			new String[] {BlogsEntry.class.getName()}, _BYO_LLM_PROVIDER_NAME,
+			true);
+
+		Document document = Mockito.mock(Document.class);
+
+		_contributeWithBYOLLMProvider(
+			document, null, RandomTestUtil.randomString());
+
+		Mockito.verify(
+			document, Mockito.never()
+		).addText(
+			Mockito.anyString(), Mockito.anyString()
+		);
+	}
+
+	@Test
+	public void testContributeWithBYOLLMProviderWithoutTags() throws Exception {
+		_setSemanticSearchConfiguration(
+			new String[] {LocaleUtil.toLanguageId(LocaleUtil.US)},
+			new String[] {BlogsEntry.class.getName()}, _BYO_LLM_PROVIDER_NAME,
+			true);
+
+		Document document = Mockito.mock(Document.class);
+
+		_addDocumentField(document, "title_en_US", "Q3 Revenue Report");
+		_addDocumentField(
+			document, "content_en_US", "Total revenue for Q3 was $42M");
+		_addDocumentField(
+			document, "assetCategoryTitles_en_US", "Finance", "Reports");
+
+		_contributeWithBYOLLMProvider(
+			document, null, RandomTestUtil.randomString());
+
+		Mockito.verify(
+			document
+		).addText(
+			"blogs_entry_en_US_semantic",
+			"Title: Q3 Revenue Report\nContent/Body: Total revenue for Q3 " +
+				"was $42M\nCategorization: Finance, Reports"
+		);
+	}
+
+	@Test
+	public void testContributeWithBYOLLMProviderWithSemanticFieldGroupsOverride()
+		throws Exception {
+
+		_textEmbeddingDocumentContributorImpl.activate(
+			HashMapBuilder.<String, Object>put(
+				"semantic.field.groups", _SEMANTIC_FIELD_GROUPS
+			).put(
+				"semantic.field.groups.blogs_entry", "Title:title"
+			).build());
+
+		_setSemanticSearchConfiguration(
+			new String[] {LocaleUtil.toLanguageId(LocaleUtil.US)},
+			new String[] {BlogsEntry.class.getName()}, _BYO_LLM_PROVIDER_NAME,
+			true);
+
+		Document document = Mockito.mock(Document.class);
+
+		_addDocumentField(
+			document, "title_en_US", "How to configure the firewall");
+		_addDocumentField(document, "assetTagNames", "firewall");
+
+		_contributeWithBYOLLMProvider(
+			document, null, RandomTestUtil.randomString());
+
+		Mockito.verify(
+			document
+		).addText(
+			"blogs_entry_en_US_semantic", "Title: How to configure the firewall"
 		);
 	}
 
@@ -330,6 +449,41 @@ public class TextEmbeddingDocumentContributorImplTest {
 				Mockito.mock(DLFileEntry.class)));
 	}
 
+	private void _addDocumentField(
+		Document document, String fieldName, String... values) {
+
+		Mockito.when(
+			document.getField(fieldName)
+		).thenReturn(
+			new Field(fieldName, values)
+		);
+	}
+
+	private void _contributeWithBYOLLMProvider(
+		Document document, String languageId, String text) {
+
+		try (MockedStatic<FeatureFlagManagerUtil>
+				featureFlagManagerUtilMockedStatic = Mockito.mockStatic(
+					FeatureFlagManagerUtil.class)) {
+
+			featureFlagManagerUtilMockedStatic.when(
+				() -> FeatureFlagManagerUtil.isEnabled(
+					Mockito.anyLong(), Mockito.eq("LPD-11319"))
+			).thenReturn(
+				true
+			);
+
+			if (languageId == null) {
+				_textEmbeddingDocumentContributorImpl.contribute(
+					document, _getBlogsEntry(), text);
+			}
+			else {
+				_textEmbeddingDocumentContributorImpl.contribute(
+					document, languageId, _getBlogsEntry(), text);
+			}
+		}
+	}
+
 	private SemanticSearchConfiguration _createSemanticSearchConfiguration(
 		String[] embeddingProviderLanguageIds,
 		String[] embeddingProviderModelClassNames, String embeddingProviderName,
@@ -445,10 +599,19 @@ public class TextEmbeddingDocumentContributorImplTest {
 		_textEmbeddingDocumentContributorImpl =
 			new TextEmbeddingDocumentContributorImpl();
 
+		_textEmbeddingDocumentContributorImpl.activate(
+			HashMapBuilder.<String, Object>put(
+				"semantic.field.groups", _SEMANTIC_FIELD_GROUPS
+			).build());
+
 		ReflectionTestUtil.setFieldValue(
 			_textEmbeddingDocumentContributorImpl,
 			"semanticSearchConfigurationProvider",
 			_semanticSearchConfigurationProvider);
+
+		ReflectionTestUtil.setFieldValue(
+			_textEmbeddingDocumentContributorImpl, "_semanticFieldNames",
+			new SemanticFieldNamesImpl());
 
 		Mockito.when(
 			_externalEmbeddingCapabilityGate.check()
@@ -469,8 +632,24 @@ public class TextEmbeddingDocumentContributorImplTest {
 			SetUtil.fromArray(new Locale[] {LocaleUtil.US, LocaleUtil.GERMAN})
 		);
 
+		Mockito.when(
+			language.isAvailableLanguageCode(Mockito.anyString())
+		).thenReturn(
+			true
+		);
+
+		Mockito.when(
+			language.isAvailableLocale(Mockito.any(Locale.class))
+		).thenReturn(
+			true
+		);
+
 		ReflectionTestUtil.setFieldValue(
 			_textEmbeddingDocumentContributorImpl, "_language", language);
+
+		LanguageUtil languageUtil = new LanguageUtil();
+
+		languageUtil.setLanguage(language);
 
 		SearchEngineInformation searchEngineInformation = Mockito.mock(
 			SearchEngineInformation.class);
@@ -499,6 +678,10 @@ public class TextEmbeddingDocumentContributorImplTest {
 
 	private static final String _BYO_LLM_PROVIDER_NAME =
 		"Elasticsearch Inference Endpoint";
+
+	private static final String _SEMANTIC_FIELD_GROUPS =
+		"Title:title|Content/Body:content|Categorization:" +
+			"assetCategoryTitles|Tags:assetTagNames";
 
 	private final ExternalEmbeddingCapabilityGate
 		_externalEmbeddingCapabilityGate = Mockito.mock(
