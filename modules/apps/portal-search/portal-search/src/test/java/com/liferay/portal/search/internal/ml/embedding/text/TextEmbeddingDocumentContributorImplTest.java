@@ -8,6 +8,7 @@ package com.liferay.portal.search.internal.ml.embedding.text;
 import com.liferay.blogs.model.BlogsEntry;
 import com.liferay.document.library.kernel.model.DLFileEntry;
 import com.liferay.object.model.ObjectEntry;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
@@ -15,6 +16,8 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.portal.search.capabilities.ExternalEmbeddingCapabilityGate;
+import com.liferay.portal.search.capabilities.ExternalEmbeddingEligibility;
 import com.liferay.portal.search.configuration.SemanticSearchConfiguration;
 import com.liferay.portal.search.configuration.SemanticSearchConfigurationProvider;
 import com.liferay.portal.search.engine.SearchEngineInformation;
@@ -29,12 +32,13 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 /**
  * @author Petteri Karttunen
  */
-public class TextEmbeddingDocumentContributorTest {
+public class TextEmbeddingDocumentContributorImplTest {
 
 	@ClassRule
 	public static final LiferayUnitTestRule liferayUnitTestRule =
@@ -54,6 +58,150 @@ public class TextEmbeddingDocumentContributorTest {
 
 		_textEmbeddingDocumentContributorImpl.contribute(
 			document, _getBlogsEntry(), RandomTestUtil.randomString());
+
+		Mockito.verify(
+			document
+		).add(
+			Mockito.any()
+		);
+	}
+
+	@Test
+	public void testContributeWithBYOLLMProvider() throws Exception {
+		_setSemanticSearchConfiguration(
+			new String[] {LocaleUtil.toLanguageId(LocaleUtil.US)},
+			new String[] {BlogsEntry.class.getName()}, _BYO_LLM_PROVIDER_NAME,
+			true);
+
+		Document document = Mockito.mock(Document.class);
+
+		try (MockedStatic<FeatureFlagManagerUtil>
+				featureFlagManagerUtilMockedStatic = Mockito.mockStatic(
+					FeatureFlagManagerUtil.class)) {
+
+			featureFlagManagerUtilMockedStatic.when(
+				() -> FeatureFlagManagerUtil.isEnabled(
+					Mockito.anyLong(), Mockito.eq("LPD-11319"))
+			).thenReturn(
+				true
+			);
+
+			_textEmbeddingDocumentContributorImpl.contribute(
+				document, _getBlogsEntry(), RandomTestUtil.randomString());
+		}
+
+		Mockito.verify(
+			_textEmbeddingRetriever, Mockito.never()
+		).getTextEmbedding(
+			Mockito.anyString(), Mockito.anyString()
+		);
+
+		Mockito.verifyNoInteractions(document);
+	}
+
+	@Test
+	public void testContributeWithBYOLLMProviderWithLanguageId()
+		throws Exception {
+
+		_setSemanticSearchConfiguration(
+			new String[] {LocaleUtil.toLanguageId(LocaleUtil.US)},
+			new String[] {BlogsEntry.class.getName()}, _BYO_LLM_PROVIDER_NAME,
+			true);
+
+		Document document = Mockito.mock(Document.class);
+
+		try (MockedStatic<FeatureFlagManagerUtil>
+				featureFlagManagerUtilMockedStatic = Mockito.mockStatic(
+					FeatureFlagManagerUtil.class)) {
+
+			featureFlagManagerUtilMockedStatic.when(
+				() -> FeatureFlagManagerUtil.isEnabled(
+					Mockito.anyLong(), Mockito.eq("LPD-11319"))
+			).thenReturn(
+				true
+			);
+
+			_textEmbeddingDocumentContributorImpl.contribute(
+				document, LocaleUtil.toLanguageId(LocaleUtil.US),
+				_getBlogsEntry(), RandomTestUtil.randomString());
+		}
+
+		Mockito.verify(
+			_textEmbeddingRetriever, Mockito.never()
+		).getTextEmbedding(
+			Mockito.anyString(), Mockito.anyString()
+		);
+
+		Mockito.verifyNoInteractions(document);
+	}
+
+	@Test
+	public void testContributeWithBYOLLMProviderWithoutCapability()
+		throws Exception {
+
+		_setSemanticSearchConfiguration(
+			new String[] {LocaleUtil.toLanguageId(LocaleUtil.US)},
+			new String[] {BlogsEntry.class.getName()}, _BYO_LLM_PROVIDER_NAME,
+			true);
+
+		Mockito.when(
+			_externalEmbeddingCapabilityGate.check()
+		).thenReturn(
+			ExternalEmbeddingEligibility.unavailable(
+				RandomTestUtil.randomString())
+		);
+
+		Document document = Mockito.mock(Document.class);
+
+		try (MockedStatic<FeatureFlagManagerUtil>
+				featureFlagManagerUtilMockedStatic = Mockito.mockStatic(
+					FeatureFlagManagerUtil.class)) {
+
+			featureFlagManagerUtilMockedStatic.when(
+				() -> FeatureFlagManagerUtil.isEnabled(
+					Mockito.anyLong(), Mockito.eq("LPD-11319"))
+			).thenReturn(
+				true
+			);
+
+			_textEmbeddingDocumentContributorImpl.contribute(
+				document, _getBlogsEntry(), RandomTestUtil.randomString());
+		}
+
+		Mockito.verify(
+			document
+		).add(
+			Mockito.any()
+		);
+	}
+
+	@Test
+	public void testContributeWithBYOLLMProviderWithoutFeatureFlag()
+		throws Exception {
+
+		_setSemanticSearchConfiguration(
+			new String[] {LocaleUtil.toLanguageId(LocaleUtil.US)},
+			new String[] {BlogsEntry.class.getName()}, _BYO_LLM_PROVIDER_NAME,
+			true);
+
+		Document document = Mockito.mock(Document.class);
+
+		try (MockedStatic<FeatureFlagManagerUtil>
+				featureFlagManagerUtilMockedStatic = Mockito.mockStatic(
+					FeatureFlagManagerUtil.class)) {
+
+			featureFlagManagerUtilMockedStatic.when(
+				() -> FeatureFlagManagerUtil.isEnabled(
+					Mockito.anyLong(), Mockito.eq("LPD-11319"))
+			).thenReturn(
+				false
+			);
+
+			_textEmbeddingDocumentContributorImpl.contribute(
+				document, _getBlogsEntry(), RandomTestUtil.randomString());
+		}
+
+		Mockito.verifyNoInteractions(_externalEmbeddingCapabilityGate);
 
 		Mockito.verify(
 			document
@@ -184,7 +332,8 @@ public class TextEmbeddingDocumentContributorTest {
 
 	private SemanticSearchConfiguration _createSemanticSearchConfiguration(
 		String[] embeddingProviderLanguageIds,
-		String[] embeddingProviderModelClassNames, boolean enabled) {
+		String[] embeddingProviderModelClassNames, String embeddingProviderName,
+		boolean enabled) {
 
 		SemanticSearchConfiguration semanticSearchConfiguration = Mockito.mock(
 			SemanticSearchConfiguration.class);
@@ -200,7 +349,7 @@ public class TextEmbeddingDocumentContributorTest {
 					{
 						setLanguageIds(embeddingProviderLanguageIds);
 						setModelClassNames(embeddingProviderModelClassNames);
-						setProviderName(RandomTestUtil.randomString());
+						setProviderName(embeddingProviderName);
 					}
 				}.toString()
 			}
@@ -269,10 +418,20 @@ public class TextEmbeddingDocumentContributorTest {
 		String[] embeddingProviderLanguageIds,
 		String[] embeddingProviderModelClassNames, boolean enabled) {
 
+		_setSemanticSearchConfiguration(
+			embeddingProviderLanguageIds, embeddingProviderModelClassNames,
+			RandomTestUtil.randomString(), enabled);
+	}
+
+	private void _setSemanticSearchConfiguration(
+		String[] embeddingProviderLanguageIds,
+		String[] embeddingProviderModelClassNames, String embeddingProviderName,
+		boolean enabled) {
+
 		SemanticSearchConfiguration semanticSearchConfiguration =
 			_createSemanticSearchConfiguration(
 				embeddingProviderLanguageIds, embeddingProviderModelClassNames,
-				enabled);
+				embeddingProviderName, enabled);
 
 		Mockito.when(
 			_semanticSearchConfigurationProvider.getCompanyConfiguration(
@@ -290,6 +449,17 @@ public class TextEmbeddingDocumentContributorTest {
 			_textEmbeddingDocumentContributorImpl,
 			"semanticSearchConfigurationProvider",
 			_semanticSearchConfigurationProvider);
+
+		Mockito.when(
+			_externalEmbeddingCapabilityGate.check()
+		).thenReturn(
+			ExternalEmbeddingEligibility.available()
+		);
+
+		ReflectionTestUtil.setFieldValue(
+			_textEmbeddingDocumentContributorImpl,
+			"_externalEmbeddingCapabilityGate",
+			_externalEmbeddingCapabilityGate);
 
 		Language language = Mockito.mock(Language.class);
 
@@ -315,11 +485,8 @@ public class TextEmbeddingDocumentContributorTest {
 			_textEmbeddingDocumentContributorImpl, "_searchEngineInformation",
 			searchEngineInformation);
 
-		TextEmbeddingRetriever textEmbeddingRetriever = Mockito.mock(
-			TextEmbeddingRetriever.class);
-
 		Mockito.when(
-			textEmbeddingRetriever.getTextEmbedding(
+			_textEmbeddingRetriever.getTextEmbedding(
 				Mockito.anyString(), Mockito.anyString())
 		).thenReturn(
 			new Double[768]
@@ -327,13 +494,21 @@ public class TextEmbeddingDocumentContributorTest {
 
 		ReflectionTestUtil.setFieldValue(
 			_textEmbeddingDocumentContributorImpl, "_textEmbeddingRetriever",
-			textEmbeddingRetriever);
+			_textEmbeddingRetriever);
 	}
 
+	private static final String _BYO_LLM_PROVIDER_NAME =
+		"Elasticsearch Inference Endpoint";
+
+	private final ExternalEmbeddingCapabilityGate
+		_externalEmbeddingCapabilityGate = Mockito.mock(
+			ExternalEmbeddingCapabilityGate.class);
 	private final SemanticSearchConfigurationProvider
 		_semanticSearchConfigurationProvider = Mockito.mock(
 			SemanticSearchConfigurationProvider.class);
 	private TextEmbeddingDocumentContributorImpl
 		_textEmbeddingDocumentContributorImpl;
+	private final TextEmbeddingRetriever _textEmbeddingRetriever = Mockito.mock(
+		TextEmbeddingRetriever.class);
 
 }

@@ -8,6 +8,7 @@ package com.liferay.portal.search.internal.ml.embedding.text;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -24,6 +25,8 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.portal.search.capabilities.ExternalEmbeddingCapabilityGate;
+import com.liferay.portal.search.capabilities.ExternalEmbeddingEligibility;
 import com.liferay.portal.search.configuration.SemanticSearchConfiguration;
 import com.liferay.portal.search.configuration.SemanticSearchConfigurationProvider;
 import com.liferay.portal.search.engine.SearchEngineInformation;
@@ -69,6 +72,14 @@ public class TextEmbeddingDocumentContributorImpl
 			return;
 		}
 
+		if (_isBYOLLMEnabled(embeddingProviderConfiguration, model)) {
+
+			// Elasticsearch generates the embeddings server-side from the
+			// semantic_text fields
+
+			return;
+		}
+
 		Double[] textEmbedding = _textEmbeddingRetriever.getTextEmbedding(
 			embeddingProviderConfiguration.getProviderName(), text);
 
@@ -91,6 +102,14 @@ public class TextEmbeddingDocumentContributorImpl
 			getEmbeddingProviderConfiguration(model);
 
 		if (embeddingProviderConfiguration == null) {
+			return;
+		}
+
+		if (_isBYOLLMEnabled(embeddingProviderConfiguration, model)) {
+
+			// Elasticsearch generates the embeddings server-side from the
+			// semantic_text fields
+
 			return;
 		}
 
@@ -261,13 +280,38 @@ public class TextEmbeddingDocumentContributorImpl
 		return 0;
 	}
 
+	private <T extends BaseModel<T>> boolean _isBYOLLMEnabled(
+		EmbeddingProviderConfiguration embeddingProviderConfiguration,
+		T model) {
+
+		if (!Objects.equals(
+				embeddingProviderConfiguration.getProviderName(),
+				_BYO_LLM_PROVIDER_NAME) ||
+			!FeatureFlagManagerUtil.isEnabled(
+				_getCompanyId(model), "LPD-11319")) {
+
+			return false;
+		}
+
+		ExternalEmbeddingEligibility externalEmbeddingEligibility =
+			_externalEmbeddingCapabilityGate.check();
+
+		return externalEmbeddingEligibility.isAvailable();
+	}
+
 	private boolean _isSupportedSearchEngine() {
 		return !Objects.equals(
 			_searchEngineInformation.getVendorString(), "Solr");
 	}
 
+	private static final String _BYO_LLM_PROVIDER_NAME =
+		"Elasticsearch Inference Endpoint";
+
 	private static final Log _log = LogFactoryUtil.getLog(
 		TextEmbeddingDocumentContributorImpl.class);
+
+	@Reference
+	private ExternalEmbeddingCapabilityGate _externalEmbeddingCapabilityGate;
 
 	@Reference
 	private Language _language;
