@@ -1,0 +1,61 @@
+/**
+ * SPDX-FileCopyrightText: (c) 2026 Liferay, Inc. https://liferay.com
+ * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
+ */
+
+package com.liferay.portal.search.internal.capabilities;
+
+import com.liferay.portal.kernel.license.util.LicenseManager;
+import com.liferay.portal.search.capabilities.ExternalEmbeddingCapabilityGate;
+import com.liferay.portal.search.capabilities.ExternalEmbeddingEligibility;
+import com.liferay.portal.search.engine.SearchEngineInformation;
+
+import java.util.Objects;
+
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+
+/**
+ * Evaluates the business preconditions for the BYO-LLM feature in a fixed
+ * order: DXP Enterprise license, then the active search engine vendor, then the
+ * Elasticsearch Inference API license tier. The first failing check wins and
+ * its reason is returned; otherwise the cached available verdict is returned.
+ *
+ * @author Rodrigo Guedes de Souza
+ */
+@Component(service = ExternalEmbeddingCapabilityGate.class)
+public class ExternalEmbeddingCapabilityGateImpl
+	implements ExternalEmbeddingCapabilityGate {
+
+	@Override
+	public ExternalEmbeddingEligibility check() {
+		if (_licenseManager.isFreeTier()) {
+			return ExternalEmbeddingEligibility.unavailable(
+				"semantic-search.external-embedding-capability." +
+					"missing-dxp-enterprise-license");
+		}
+
+		if (!Objects.equals(
+				_searchEngineInformation.getVendorString(), "Elasticsearch")) {
+
+			return ExternalEmbeddingEligibility.unavailable(
+				"semantic-search.external-embedding-capability." +
+					"unsupported-search-engine");
+		}
+
+		if (!_searchEngineInformation.isInferenceAPISupported()) {
+			return ExternalEmbeddingEligibility.unavailable(
+				"semantic-search.external-embedding-capability." +
+					"missing-elasticsearch-license");
+		}
+
+		return ExternalEmbeddingEligibility.available();
+	}
+
+	@Reference
+	private LicenseManager _licenseManager;
+
+	@Reference
+	private SearchEngineInformation _searchEngineInformation;
+
+}

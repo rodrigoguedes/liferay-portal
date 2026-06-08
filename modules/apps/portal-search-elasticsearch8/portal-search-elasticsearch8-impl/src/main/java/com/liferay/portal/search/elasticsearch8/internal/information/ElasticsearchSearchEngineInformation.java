@@ -10,6 +10,10 @@ import co.elastic.clients.elasticsearch._types.ElasticsearchVersionInfo;
 import co.elastic.clients.elasticsearch._types.Time;
 import co.elastic.clients.elasticsearch._types.TimeUnit;
 import co.elastic.clients.elasticsearch.core.InfoResponse;
+import co.elastic.clients.elasticsearch.license.GetLicenseResponse;
+import co.elastic.clients.elasticsearch.license.LicenseStatus;
+import co.elastic.clients.elasticsearch.license.LicenseType;
+import co.elastic.clients.elasticsearch.license.get.LicenseInformation;
 import co.elastic.clients.elasticsearch.nodes.ElasticsearchNodesClient;
 import co.elastic.clients.elasticsearch.nodes.NodesInfoRequest;
 import co.elastic.clients.elasticsearch.nodes.NodesInfoResponse;
@@ -179,6 +183,43 @@ public class ElasticsearchSearchEngineInformation
 		}
 
 		return vendor;
+	}
+
+	@Override
+	public boolean isInferenceAPISupported() {
+		try {
+			ElasticsearchClient elasticsearchClient =
+				elasticsearchConnectionManager.getElasticsearchClient();
+
+			GetLicenseResponse getLicenseResponse = elasticsearchClient.license(
+			).get();
+
+			LicenseInformation licenseInformation =
+				getLicenseResponse.license();
+
+			if (licenseInformation.status() != LicenseStatus.Active) {
+				return false;
+			}
+
+			LicenseType licenseType = licenseInformation.type();
+
+			if ((licenseType == LicenseType.Trial) ||
+				(licenseType == LicenseType.Enterprise)) {
+
+				return true;
+			}
+
+			return false;
+		}
+		catch (Exception exception) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(
+					"Unable to determine Elasticsearch license tier",
+					exception);
+			}
+
+			return false;
+		}
 	}
 
 	@Reference

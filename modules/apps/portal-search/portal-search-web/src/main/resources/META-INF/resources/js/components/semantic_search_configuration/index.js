@@ -192,6 +192,8 @@ export default function ({
 	availableModelClassNames,
 	availableTextEmbeddingProviders,
 	availableTextTruncationStrategies,
+	externalEmbeddingCapabilityAvailable = true,
+	externalEmbeddingCapabilityReason,
 	formName,
 	initialTextEmbeddingCacheTimeout,
 	initialTextEmbeddingProviderConfigurationJSONs,
@@ -1708,6 +1710,18 @@ export default function ({
 
 	return (
 		<div className="semantic-search-settings-root">
+			{!externalEmbeddingCapabilityAvailable &&
+				externalEmbeddingCapabilityReason && (
+					<ClayAlert
+						displayType="warning"
+						title={Liferay.Language.get(
+							'bring-your-own-llm-via-elasticsearch-inference-endpoints-is-unavailable'
+						)}
+					>
+						{externalEmbeddingCapabilityReason}
+					</ClayAlert>
+				)}
+
 			{_renderEmbeddingProviderConfigurationInputs(0)}
 
 			<SubmitWarningModal
