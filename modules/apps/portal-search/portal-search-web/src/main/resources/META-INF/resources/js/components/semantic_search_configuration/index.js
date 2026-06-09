@@ -1543,6 +1543,11 @@ export default function ({
 								.textEmbeddingProviderConfigurationJSONs[index]
 								?.attributes.hostAddress
 						}
+						inferenceId={
+							formik.values
+								.textEmbeddingProviderConfigurationJSONs[index]
+								?.attributes?.inferenceId
+						}
 						languageIds={
 							formik.values
 								.textEmbeddingProviderConfigurationJSONs[index]

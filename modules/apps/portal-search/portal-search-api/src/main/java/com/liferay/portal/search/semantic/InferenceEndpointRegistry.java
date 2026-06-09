@@ -31,4 +31,15 @@ public interface InferenceEndpointRegistry {
 	 */
 	public List<InferenceEndpoint> getTextEmbeddingInferenceEndpoints();
 
+	/**
+	 * Sends a sample text to the endpoint via {@code POST _inference/<id>} and
+	 * returns the number of dimensions in the resulting embedding, so the admin
+	 * "Test configuration" action can confirm the endpoint actually works.
+	 * Throws when the endpoint is unreachable or rejects the request (for
+	 * example, an invalid API key) so the caller can surface the Elasticsearch
+	 * error.
+	 */
+	public int testTextEmbeddingInferenceEndpoint(String inferenceId)
+		throws Exception;
+
 }

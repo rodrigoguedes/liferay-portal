@@ -9,7 +9,10 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.inference.ElasticsearchInferenceClient;
 import co.elastic.clients.elasticsearch.inference.GetInferenceResponse;
 import co.elastic.clients.elasticsearch.inference.InferenceEndpointInfo;
+import co.elastic.clients.elasticsearch.inference.InferenceResponse;
+import co.elastic.clients.elasticsearch.inference.InferenceResult;
 import co.elastic.clients.elasticsearch.inference.TaskType;
+import co.elastic.clients.elasticsearch.inference.TextEmbeddingResult;
 import co.elastic.clients.json.JsonData;
 
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
@@ -17,8 +20,10 @@ import com.liferay.portal.search.elasticsearch8.internal.connection.Elasticsearc
 import com.liferay.portal.search.semantic.InferenceEndpoint;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -89,6 +94,38 @@ public class ElasticsearchInferenceEndpointRegistryTest {
 			inferenceEndpoints.toString(), inferenceEndpoints.isEmpty());
 	}
 
+	@Test
+	public void testTestTextEmbeddingInferenceEndpoint() throws Exception {
+		ElasticsearchInferenceClient elasticsearchInferenceClient =
+			Mockito.mock(ElasticsearchInferenceClient.class);
+
+		Mockito.when(
+			elasticsearchInferenceClient.inference(Mockito.any(Function.class))
+		).thenReturn(
+			_inferenceResponse(3)
+		);
+
+		ElasticsearchClient elasticsearchClient = Mockito.mock(
+			ElasticsearchClient.class);
+
+		Mockito.when(
+			elasticsearchClient.inference()
+		).thenReturn(
+			elasticsearchInferenceClient
+		);
+
+		Mockito.when(
+			_elasticsearchClientResolver.getElasticsearchClient()
+		).thenReturn(
+			elasticsearchClient
+		);
+
+		Assert.assertEquals(
+			3,
+			_elasticsearchInferenceEndpointRegistry.
+				testTextEmbeddingInferenceEndpoint("openai-embeddings"));
+	}
+
 	private InferenceEndpointInfo _inferenceEndpointInfo(
 		String inferenceId, String service, TaskType taskType) {
 
@@ -101,6 +138,24 @@ public class ElasticsearchInferenceEndpointRegistryTest {
 		builder.taskType(taskType);
 
 		return builder.build();
+	}
+
+	private InferenceResponse _inferenceResponse(int dimensions) {
+		List<Float> embedding = new ArrayList<>();
+
+		for (int i = 0; i < dimensions; i++) {
+			embedding.add(0.1F);
+		}
+
+		TextEmbeddingResult textEmbeddingResult = TextEmbeddingResult.of(
+			builder -> builder.embedding(embedding));
+
+		return InferenceResponse.of(
+			builder -> builder.valueBody(
+				InferenceResult.of(
+					inferenceResultBuilder ->
+						inferenceResultBuilder.textEmbedding(
+							List.of(textEmbeddingResult)))));
 	}
 
 	private void _setUpInferenceEndpoints(

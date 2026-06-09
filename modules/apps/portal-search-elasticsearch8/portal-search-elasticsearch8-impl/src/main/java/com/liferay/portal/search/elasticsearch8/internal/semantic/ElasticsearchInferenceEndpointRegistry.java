@@ -8,7 +8,10 @@ package com.liferay.portal.search.elasticsearch8.internal.semantic;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.inference.GetInferenceResponse;
 import co.elastic.clients.elasticsearch.inference.InferenceEndpointInfo;
+import co.elastic.clients.elasticsearch.inference.InferenceResponse;
+import co.elastic.clients.elasticsearch.inference.InferenceResult;
 import co.elastic.clients.elasticsearch.inference.TaskType;
+import co.elastic.clients.elasticsearch.inference.TextEmbeddingResult;
 
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -110,6 +113,41 @@ public class ElasticsearchInferenceEndpointRegistry
 
 			return Collections.emptyList();
 		}
+	}
+
+	@Override
+	public int testTextEmbeddingInferenceEndpoint(String inferenceId)
+		throws Exception {
+
+		ElasticsearchClient elasticsearchClient =
+			_elasticsearchClientResolver.getElasticsearchClient();
+
+		InferenceResponse inferenceResponse = elasticsearchClient.inference(
+		).inference(
+			inferenceRequestBuilder -> inferenceRequestBuilder.inferenceId(
+				inferenceId
+			).input(
+				"Liferay BYO-LLM inference endpoint test"
+			)
+		);
+
+		InferenceResult inferenceResult = inferenceResponse.valueBody();
+
+		if (inferenceResult.isTextEmbedding()) {
+			List<TextEmbeddingResult> textEmbeddingResults =
+				inferenceResult.textEmbedding();
+
+			if (!textEmbeddingResults.isEmpty()) {
+				TextEmbeddingResult textEmbeddingResult =
+					textEmbeddingResults.get(0);
+
+				List<Float> embedding = textEmbeddingResult.embedding();
+
+				return embedding.size();
+			}
+		}
+
+		return 0;
 	}
 
 	private InferenceEndpoint _toInferenceEndpoint(
