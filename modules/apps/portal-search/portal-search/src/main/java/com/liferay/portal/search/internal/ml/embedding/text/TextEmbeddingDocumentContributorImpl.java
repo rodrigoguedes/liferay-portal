@@ -30,6 +30,8 @@ import com.liferay.portal.search.engine.SearchEngineInformation;
 import com.liferay.portal.search.ml.embedding.text.TextEmbeddingDocumentContributor;
 import com.liferay.portal.search.ml.embedding.text.TextEmbeddingRetriever;
 import com.liferay.portal.search.rest.dto.v1_0.EmbeddingProviderConfiguration;
+import com.liferay.portal.search.semantic.SemanticFieldNames;
+import com.liferay.portal.search.semantic.SemanticTextEmbeddingProviderType;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -69,6 +71,12 @@ public class TextEmbeddingDocumentContributorImpl
 			return;
 		}
 
+		if (_isInferenceEndpoint(embeddingProviderConfiguration)) {
+			_addSemanticTextField(document, languageId, model, text);
+
+			return;
+		}
+
 		Double[] textEmbedding = _textEmbeddingRetriever.getTextEmbedding(
 			embeddingProviderConfiguration.getProviderName(), text);
 
@@ -94,15 +102,29 @@ public class TextEmbeddingDocumentContributorImpl
 			return;
 		}
 
+		List<String> languageIds = Arrays.asList(
+			embeddingProviderConfiguration.getLanguageIds());
+
+		if (_isInferenceEndpoint(embeddingProviderConfiguration)) {
+			for (Locale locale :
+					_language.getAvailableLocales(_getGroupId(model))) {
+
+				String languageId = LocaleUtil.toLanguageId(locale);
+
+				if (languageIds.contains(languageId)) {
+					_addSemanticTextField(document, languageId, model, text);
+				}
+			}
+
+			return;
+		}
+
 		Double[] textEmbedding = _textEmbeddingRetriever.getTextEmbedding(
 			embeddingProviderConfiguration.getProviderName(), text);
 
 		if (textEmbedding.length == 0) {
 			return;
 		}
-
-		List<String> languageIds = Arrays.asList(
-			embeddingProviderConfiguration.getLanguageIds());
 
 		for (Locale locale :
 				_language.getAvailableLocales(_getGroupId(model))) {
@@ -150,15 +172,7 @@ public class TextEmbeddingDocumentContributorImpl
 			return null;
 		}
 
-		Class<?> clazz = model.getModelClass();
-
-		String modelClassName = clazz.getName();
-
-		if (model instanceof ObjectEntry) {
-			ObjectEntry objectEntry = (ObjectEntry)model;
-
-			modelClassName = objectEntry.getModelClassName();
-		}
+		String modelClassName = _getModelClassName(model);
 
 		try {
 			for (String textEmbeddingProviderConfigurationJSON :
@@ -217,6 +231,17 @@ public class TextEmbeddingDocumentContributorImpl
 	protected SemanticSearchConfigurationProvider
 		semanticSearchConfigurationProvider;
 
+	private <T extends BaseModel<T>> void _addSemanticTextField(
+		Document document, String languageId, T model, String text) {
+
+		document.addText(
+			SemanticFieldNames.fieldName(
+				languageId,
+				SemanticTextEmbeddingProviderType.ELASTICSEARCH_PROVIDED,
+				SemanticFieldNames.assetType(_getModelClassName(model)), 0),
+			text);
+	}
+
 	private void _addTextEmbeddingField(
 		Document document, String languageId, Double[] textEmbedding) {
 
@@ -259,6 +284,26 @@ public class TextEmbeddingDocumentContributorImpl
 		}
 
 		return 0;
+	}
+
+	private <T extends BaseModel<T>> String _getModelClassName(T model) {
+		if (model instanceof ObjectEntry) {
+			ObjectEntry objectEntry = (ObjectEntry)model;
+
+			return objectEntry.getModelClassName();
+		}
+
+		Class<?> clazz = model.getModelClass();
+
+		return clazz.getName();
+	}
+
+	private boolean _isInferenceEndpoint(
+		EmbeddingProviderConfiguration embeddingProviderConfiguration) {
+
+		return Objects.equals(
+			embeddingProviderConfiguration.getProviderName(),
+			"inference-endpoint");
 	}
 
 	private boolean _isSupportedSearchEngine() {

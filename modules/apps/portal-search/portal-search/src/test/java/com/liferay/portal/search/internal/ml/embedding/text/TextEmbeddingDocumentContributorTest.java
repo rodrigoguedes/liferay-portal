@@ -63,6 +63,72 @@ public class TextEmbeddingDocumentContributorTest {
 	}
 
 	@Test
+	public void testContributeWithInferenceEndpoint() throws Exception {
+		_setSemanticSearchConfiguration(
+			new String[] {LocaleUtil.toLanguageId(LocaleUtil.US)},
+			new String[] {BlogsEntry.class.getName()}, true,
+			"inference-endpoint");
+
+		Document document = Mockito.mock(Document.class);
+
+		String text = RandomTestUtil.randomString();
+
+		_textEmbeddingDocumentContributorImpl.contribute(
+			document, LocaleUtil.toLanguageId(LocaleUtil.US), _getBlogsEntry(),
+			text);
+
+		Mockito.verify(
+			document
+		).addText(
+			"blogsentry_en_US_semantic", text
+		);
+
+		Mockito.verify(
+			_textEmbeddingRetriever, Mockito.never()
+		).getTextEmbedding(
+			Mockito.anyString(), Mockito.anyString()
+		);
+	}
+
+	@Test
+	public void testContributeWithInferenceEndpointForEachLocale()
+		throws Exception {
+
+		_setSemanticSearchConfiguration(
+			new String[] {
+				LocaleUtil.toLanguageId(LocaleUtil.US),
+				LocaleUtil.toLanguageId(LocaleUtil.GERMAN)
+			},
+			new String[] {BlogsEntry.class.getName()}, true,
+			"inference-endpoint");
+
+		Document document = Mockito.mock(Document.class);
+
+		String text = RandomTestUtil.randomString();
+
+		_textEmbeddingDocumentContributorImpl.contribute(
+			document, _getBlogsEntry(), text);
+
+		Mockito.verify(
+			document
+		).addText(
+			"blogsentry_en_US_semantic", text
+		);
+
+		Mockito.verify(
+			document
+		).addText(
+			"blogsentry_de_semantic", text
+		);
+
+		Mockito.verify(
+			_textEmbeddingRetriever, Mockito.never()
+		).getTextEmbedding(
+			Mockito.anyString(), Mockito.anyString()
+		);
+	}
+
+	@Test
 	public void testContributeWithLanguageId() throws Exception {
 		Document document = Mockito.mock(Document.class);
 
@@ -184,7 +250,8 @@ public class TextEmbeddingDocumentContributorTest {
 
 	private SemanticSearchConfiguration _createSemanticSearchConfiguration(
 		String[] embeddingProviderLanguageIds,
-		String[] embeddingProviderModelClassNames, boolean enabled) {
+		String[] embeddingProviderModelClassNames, boolean enabled,
+		String embeddingProviderName) {
 
 		SemanticSearchConfiguration semanticSearchConfiguration = Mockito.mock(
 			SemanticSearchConfiguration.class);
@@ -200,7 +267,7 @@ public class TextEmbeddingDocumentContributorTest {
 					{
 						setLanguageIds(embeddingProviderLanguageIds);
 						setModelClassNames(embeddingProviderModelClassNames);
-						setProviderName(RandomTestUtil.randomString());
+						setProviderName(embeddingProviderName);
 					}
 				}.toString()
 			}
@@ -269,10 +336,20 @@ public class TextEmbeddingDocumentContributorTest {
 		String[] embeddingProviderLanguageIds,
 		String[] embeddingProviderModelClassNames, boolean enabled) {
 
+		_setSemanticSearchConfiguration(
+			embeddingProviderLanguageIds, embeddingProviderModelClassNames,
+			enabled, RandomTestUtil.randomString());
+	}
+
+	private void _setSemanticSearchConfiguration(
+		String[] embeddingProviderLanguageIds,
+		String[] embeddingProviderModelClassNames, boolean enabled,
+		String providerName) {
+
 		SemanticSearchConfiguration semanticSearchConfiguration =
 			_createSemanticSearchConfiguration(
 				embeddingProviderLanguageIds, embeddingProviderModelClassNames,
-				enabled);
+				enabled, providerName);
 
 		Mockito.when(
 			_semanticSearchConfigurationProvider.getCompanyConfiguration(
@@ -315,11 +392,8 @@ public class TextEmbeddingDocumentContributorTest {
 			_textEmbeddingDocumentContributorImpl, "_searchEngineInformation",
 			searchEngineInformation);
 
-		TextEmbeddingRetriever textEmbeddingRetriever = Mockito.mock(
-			TextEmbeddingRetriever.class);
-
 		Mockito.when(
-			textEmbeddingRetriever.getTextEmbedding(
+			_textEmbeddingRetriever.getTextEmbedding(
 				Mockito.anyString(), Mockito.anyString())
 		).thenReturn(
 			new Double[768]
@@ -327,7 +401,7 @@ public class TextEmbeddingDocumentContributorTest {
 
 		ReflectionTestUtil.setFieldValue(
 			_textEmbeddingDocumentContributorImpl, "_textEmbeddingRetriever",
-			textEmbeddingRetriever);
+			_textEmbeddingRetriever);
 	}
 
 	private final SemanticSearchConfigurationProvider
@@ -335,5 +409,7 @@ public class TextEmbeddingDocumentContributorTest {
 			SemanticSearchConfigurationProvider.class);
 	private TextEmbeddingDocumentContributorImpl
 		_textEmbeddingDocumentContributorImpl;
+	private final TextEmbeddingRetriever _textEmbeddingRetriever = Mockito.mock(
+		TextEmbeddingRetriever.class);
 
 }

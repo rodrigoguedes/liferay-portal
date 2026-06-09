@@ -5,9 +5,11 @@
 
 package com.liferay.portal.search.semantic;
 
+import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.StringUtil;
 
 import java.util.Locale;
 
@@ -34,6 +36,20 @@ import java.util.Locale;
  * @author Rodrigo Guedes de Souza
  */
 public class SemanticFieldNames {
+
+	/**
+	 * Derives the short, stable asset-type token used in a {@code
+	 * <assetType>_<lang>_semantic} field name from a model class name. The same
+	 * token must be produced both when the index mapping is built and when the
+	 * document is contributed, so this is the single point that defines the
+	 * convention (the lowercased simple class name, e.g. {@code
+	 * com.liferay.blogs.model.BlogsEntry} → {@code blogsentry}).
+	 */
+	public static String assetType(String modelClassName) {
+		return StringUtil.toLowerCase(
+			modelClassName.substring(
+				modelClassName.lastIndexOf(CharPool.PERIOD) + 1));
+	}
 
 	public static String fieldName(
 		Locale locale,
