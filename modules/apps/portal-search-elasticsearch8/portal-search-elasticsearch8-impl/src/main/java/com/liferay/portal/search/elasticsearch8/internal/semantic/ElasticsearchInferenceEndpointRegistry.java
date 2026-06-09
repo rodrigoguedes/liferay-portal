@@ -229,10 +229,16 @@ public class ElasticsearchInferenceEndpointRegistry
 
 		TaskType taskType = inferenceEndpointInfo.taskType();
 
+		JSONObject serviceSettingsJSONObject = _toServiceSettingsJSONObject(
+			inferenceEndpointInfo.serviceSettings());
+
 		return new InferenceEndpoint(
 			inferenceEndpointInfo.inferenceId(),
 			(taskType == null) ? null : taskType.jsonValue(),
-			inferenceEndpointInfo.service());
+			inferenceEndpointInfo.service(),
+			serviceSettingsJSONObject.getString("model_id", null),
+			serviceSettingsJSONObject.getInt("dimensions", 0),
+			serviceSettingsJSONObject.getString("similarity", null));
 	}
 
 	private List<InferenceService> _toInferenceServices(JSONArray jsonArray) {
@@ -278,6 +284,24 @@ public class ElasticsearchInferenceEndpointRegistry
 		}
 
 		return inferenceServices;
+	}
+
+	private JSONObject _toServiceSettingsJSONObject(JsonData serviceSettings) {
+		if (serviceSettings == null) {
+			return _jsonFactory.createJSONObject();
+		}
+
+		try {
+			return _jsonFactory.createJSONObject(
+				String.valueOf(serviceSettings));
+		}
+		catch (Exception exception) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(exception);
+			}
+
+			return _jsonFactory.createJSONObject();
+		}
 	}
 
 	private List<String> _toStringList(JSONArray jsonArray) {
