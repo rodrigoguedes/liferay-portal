@@ -6,8 +6,6 @@
 package com.liferay.blogs.internal.search.spi.model.index.contributor;
 
 import com.liferay.blogs.model.BlogsEntry;
-import com.liferay.petra.string.StringBundler;
-import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.Field;
@@ -15,6 +13,7 @@ import com.liferay.portal.kernel.util.HtmlParser;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Localization;
 import com.liferay.portal.search.ml.embedding.text.TextEmbeddingDocumentContributor;
+import com.liferay.portal.search.ml.embedding.text.helper.SemanticTextContentBuilder;
 import com.liferay.portal.search.spi.model.index.contributor.ModelDocumentContributor;
 
 import java.util.Locale;
@@ -61,9 +60,12 @@ public class BlogsEntryModelDocumentContributor
 
 			_textEmbeddingDocumentContributor.contribute(
 				document, languageId, blogsEntry,
-				StringBundler.concat(
-					blogsEntry.getTitle(), StringPool.PERIOD, StringPool.SPACE,
-					blogsEntry.getContent()));
+				new SemanticTextContentBuilder(
+				).append(
+					"Title", blogsEntry.getTitle()
+				).append(
+					"Content/Body", content
+				).build());
 		}
 	}
 

@@ -13,7 +13,6 @@ import com.liferay.message.boards.service.MBMessageLocalService;
 import com.liferay.message.boards.service.MBThreadLocalService;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
-import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.comment.Comment;
 import com.liferay.portal.kernel.comment.CommentManager;
 import com.liferay.portal.kernel.exception.SystemException;
@@ -32,6 +31,7 @@ import com.liferay.portal.kernel.util.Localization;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.search.ml.embedding.text.TextEmbeddingDocumentContributor;
+import com.liferay.portal.search.ml.embedding.text.helper.SemanticTextContentBuilder;
 import com.liferay.portal.search.spi.model.index.contributor.ModelDocumentContributor;
 import com.liferay.ratings.kernel.model.RatingsStats;
 import com.liferay.ratings.kernel.service.RatingsStatsLocalService;
@@ -72,9 +72,12 @@ public class MBMessageModelDocumentContributor
 
 			_textEmbeddingDocumentContributor.contribute(
 				document, languageId, mbMessage,
-				StringBundler.concat(
-					mbMessage.getSubject(), StringPool.PERIOD, StringPool.SPACE,
-					content));
+				new SemanticTextContentBuilder(
+				).append(
+					"Title", mbMessage.getSubject()
+				).append(
+					"Content/Body", content
+				).build());
 		}
 
 		document.addKeyword(

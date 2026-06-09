@@ -32,6 +32,7 @@ import com.liferay.portal.kernel.util.Localization;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.search.ml.embedding.text.TextEmbeddingDocumentContributor;
+import com.liferay.portal.search.ml.embedding.text.helper.SemanticTextContentBuilder;
 import com.liferay.portal.search.model.uid.UIDFactory;
 import com.liferay.portal.search.spi.model.index.contributor.ModelDocumentContributor;
 import com.liferay.trash.TrashHelper;
@@ -269,10 +270,12 @@ public class JournalArticleModelDocumentContributor
 
 			_textEmbeddingDocumentContributor.contribute(
 				document, languageId, journalArticle,
-				StringBundler.concat(
-					journalArticle.getTitle(locale), StringPool.PERIOD,
-					StringPool.SPACE,
-					_getEmbeddingText(ddmFormValues, locale)));
+				new SemanticTextContentBuilder(
+				).append(
+					"Title", journalArticle.getTitle(locale)
+				).append(
+					"Content/Body", _getEmbeddingText(ddmFormValues, locale)
+				).build());
 		}
 	}
 
