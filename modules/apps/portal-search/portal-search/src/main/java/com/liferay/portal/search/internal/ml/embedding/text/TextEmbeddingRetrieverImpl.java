@@ -190,6 +190,12 @@ public class TextEmbeddingRetrieverImpl implements TextEmbeddingRetriever {
 				_devTextEmbeddingsEnabled = enabled,
 			MapUtil.singletonDictionary("feature.flag.key", "LPD-31789"));
 
+		_externalEmbeddingsServiceRegistration = bundleContext.registerService(
+			FeatureFlagListener.class,
+			(companyId, featureFlagKey, enabled) ->
+				_externalEmbeddingsEnabled = enabled,
+			MapUtil.singletonDictionary("feature.flag.key", "LPD-11319"));
+
 		_textEmbeddingProviderServiceTrackerList =
 			ServiceTrackerListFactory.open(
 				bundleContext, TextEmbeddingProvider.class);
@@ -197,6 +203,8 @@ public class TextEmbeddingRetrieverImpl implements TextEmbeddingRetriever {
 
 	@Deactivate
 	protected void deactivate() {
+		_externalEmbeddingsServiceRegistration.unregister();
+
 		_serviceRegistration.unregister();
 	}
 
@@ -283,6 +291,10 @@ public class TextEmbeddingRetrieverImpl implements TextEmbeddingRetriever {
 			return false;
 		}
 
+		if (Objects.equals(textEmbeddingProviderName, "inference-endpoint")) {
+			return _externalEmbeddingsEnabled;
+		}
+
 		if (_devProviders.contains(textEmbeddingProviderName)) {
 			return _devTextEmbeddingsEnabled;
 		}
@@ -305,6 +317,8 @@ public class TextEmbeddingRetrieverImpl implements TextEmbeddingRetriever {
 	private volatile boolean _betaTextEmbeddingsEnabled;
 	private boolean _devTextEmbeddingsEnabled;
 	private final List<String> _disabledProviderNames = new ArrayList<>();
+	private volatile boolean _externalEmbeddingsEnabled;
+	private ServiceRegistration<?> _externalEmbeddingsServiceRegistration;
 
 	@Reference
 	private SemanticSearchConfigurationProvider

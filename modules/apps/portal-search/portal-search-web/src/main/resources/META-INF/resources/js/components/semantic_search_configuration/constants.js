@@ -6,6 +6,7 @@
 export const TEXT_EMBEDDING_PROVIDER_TYPES = {
 	HUGGING_FACE_INFERENCE_API: 'hugging-face-inference-api',
 	HUGGING_FACE_INFERENCE_ENDPOINT: 'hugging-face-inference-endpoint',
+	INFERENCE_ENDPOINT: 'inference-endpoint',
 	OPENAI: 'openai',
 	TXTAI: 'txtai',
 	VERTEX_AI: 'vertex-ai',
