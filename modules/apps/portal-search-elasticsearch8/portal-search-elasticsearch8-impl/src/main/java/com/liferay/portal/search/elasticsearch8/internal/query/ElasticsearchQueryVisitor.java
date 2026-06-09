@@ -41,6 +41,7 @@ import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.search.elasticsearch8.internal.geolocation.GeoTranslator;
 import com.liferay.portal.search.elasticsearch8.internal.query.function.score.ElasticsearchScoreFunctionTranslator;
 import com.liferay.portal.search.elasticsearch8.internal.script.ScriptTranslator;
@@ -65,6 +66,7 @@ import com.liferay.portal.search.query.GeoDistanceRangeQuery;
 import com.liferay.portal.search.query.GeoPolygonQuery;
 import com.liferay.portal.search.query.GeoShapeQuery;
 import com.liferay.portal.search.query.IdsQuery;
+import com.liferay.portal.search.query.KnnQuery;
 import com.liferay.portal.search.query.MatchAllQuery;
 import com.liferay.portal.search.query.MatchPhrasePrefixQuery;
 import com.liferay.portal.search.query.MatchPhraseQuery;
@@ -80,7 +82,9 @@ import com.liferay.portal.search.query.QueryVisitor;
 import com.liferay.portal.search.query.RangeTermQuery;
 import com.liferay.portal.search.query.RegexQuery;
 import com.liferay.portal.search.query.ScriptQuery;
+import com.liferay.portal.search.query.SemanticQuery;
 import com.liferay.portal.search.query.SimpleStringQuery;
+import com.liferay.portal.search.query.SparseVectorQuery;
 import com.liferay.portal.search.query.StringQuery;
 import com.liferay.portal.search.query.TermQuery;
 import com.liferay.portal.search.query.TermsQuery;
@@ -562,6 +566,39 @@ public class ElasticsearchQueryVisitor implements QueryVisitor<QueryVariant> {
 	}
 
 	@Override
+	public QueryVariant visit(KnnQuery knnQuery) {
+		co.elastic.clients.elasticsearch._types.KnnQuery.Builder builder =
+			QueryBuilders.knn();
+
+		SetterUtil.setNotNullFloat(builder::boost, knnQuery.getBoost());
+
+		builder.field(knnQuery.getField());
+
+		List<Float> queryVector = knnQuery.getQueryVector();
+
+		if (ListUtil.isNotEmpty(queryVector)) {
+			builder.queryVector(queryVector);
+		}
+		else if (Validator.isNotNull(knnQuery.getInferenceId())) {
+			builder.queryVectorBuilder(
+				queryVectorBuilder -> queryVectorBuilder.textEmbedding(
+					textEmbedding -> textEmbedding.modelId(
+						knnQuery.getInferenceId()
+					).modelText(
+						knnQuery.getQueryText()
+					)));
+		}
+
+		SetterUtil.setNotNullInteger(builder::k, knnQuery.getK());
+		SetterUtil.setNotNullInteger(
+			builder::numCandidates, knnQuery.getNumCandidates());
+		SetterUtil.setNotNullFloat(
+			builder::similarity, knnQuery.getSimilarity());
+
+		return builder.build();
+	}
+
+	@Override
 	public QueryVariant visit(MatchAllQuery matchAllQuery) {
 		co.elastic.clients.elasticsearch._types.query_dsl.MatchAllQuery.Builder
 			builder = QueryBuilders.matchAll();
@@ -871,6 +908,19 @@ public class ElasticsearchQueryVisitor implements QueryVisitor<QueryVariant> {
 	}
 
 	@Override
+	public QueryVariant visit(SemanticQuery semanticQuery) {
+		co.elastic.clients.elasticsearch._types.query_dsl.SemanticQuery.Builder
+			builder = QueryBuilders.semantic();
+
+		SetterUtil.setNotNullFloat(builder::boost, semanticQuery.getBoost());
+
+		builder.field(semanticQuery.getField());
+		builder.query(semanticQuery.getQuery());
+
+		return builder.build();
+	}
+
+	@Override
 	public QueryVariant visit(SimpleStringQuery simpleStringQuery) {
 		SimpleQueryStringQuery.Builder builder =
 			QueryBuilders.simpleQueryString();
@@ -913,6 +963,27 @@ public class ElasticsearchQueryVisitor implements QueryVisitor<QueryVariant> {
 
 		SetterUtil.setNotBlankString(
 			builder::quoteFieldSuffix, simpleStringQuery.getQuoteFieldSuffix());
+
+		return builder.build();
+	}
+
+	@Override
+	public QueryVariant visit(SparseVectorQuery sparseVectorQuery) {
+		co.elastic.clients.elasticsearch._types.query_dsl.SparseVectorQuery.
+			Builder builder = QueryBuilders.sparseVector();
+
+		SetterUtil.setNotNullFloat(
+			builder::boost, sparseVectorQuery.getBoost());
+
+		builder.field(sparseVectorQuery.getField());
+		builder.query(sparseVectorQuery.getQuery());
+
+		SetterUtil.setNotNullBoolean(
+			builder::prune, sparseVectorQuery.getPrune());
+
+		if (Validator.isNotNull(sparseVectorQuery.getInferenceId())) {
+			builder.inferenceId(sparseVectorQuery.getInferenceId());
+		}
 
 		return builder.build();
 	}

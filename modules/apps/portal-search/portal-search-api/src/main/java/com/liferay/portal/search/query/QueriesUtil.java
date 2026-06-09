@@ -111,6 +111,10 @@ public class QueriesUtil {
 		return new IdsQuery();
 	}
 
+	public static KnnQuery knn(String field) {
+		return new KnnQuery(field);
+	}
+
 	public static MatchQuery match(String field, Object value) {
 		return new MatchQuery(field, value);
 	}
@@ -216,8 +220,16 @@ public class QueriesUtil {
 		return new ScriptQuery(script);
 	}
 
+	public static SemanticQuery semantic(String field, String query) {
+		return new SemanticQuery(field, query);
+	}
+
 	public static SimpleStringQuery simpleString(String query) {
 		return new SimpleStringQuery(query);
+	}
+
+	public static SparseVectorQuery sparseVector(String field, String query) {
+		return new SparseVectorQuery(field, query);
 	}
 
 	public static StringQuery string(String query) {
