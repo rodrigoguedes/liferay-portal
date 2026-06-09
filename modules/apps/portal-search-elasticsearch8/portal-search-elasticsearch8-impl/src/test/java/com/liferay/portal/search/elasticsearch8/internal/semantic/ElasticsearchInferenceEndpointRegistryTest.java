@@ -15,9 +15,13 @@ import co.elastic.clients.elasticsearch.inference.TaskType;
 import co.elastic.clients.elasticsearch.inference.TextEmbeddingResult;
 import co.elastic.clients.json.JsonData;
 
+import com.liferay.portal.kernel.json.JSONArray;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.search.elasticsearch8.internal.connection.ElasticsearchClientResolver;
 import com.liferay.portal.search.semantic.InferenceEndpoint;
+import com.liferay.portal.search.semantic.InferenceService;
+import com.liferay.portal.search.semantic.InferenceServiceField;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 
 import java.util.ArrayList;
@@ -95,6 +99,85 @@ public class ElasticsearchInferenceEndpointRegistryTest {
 	}
 
 	@Test
+	public void testGetTextEmbeddingInferenceServicesParsing() {
+		JSONArray jsonArray = JSONUtil.putAll(
+			JSONUtil.put(
+				"configurations",
+				JSONUtil.put(
+					"api_key",
+					JSONUtil.put(
+						"description", "key"
+					).put(
+						"label", "API Key"
+					).put(
+						"required", true
+					).put(
+						"sensitive", true
+					).put(
+						"supported_task_types",
+						JSONUtil.putAll("text_embedding", "completion")
+					).put(
+						"type", "str"
+					)
+				).put(
+					"dimensions",
+					JSONUtil.put(
+						"description", "dims"
+					).put(
+						"label", "Dimensions"
+					).put(
+						"required", false
+					).put(
+						"sensitive", false
+					).put(
+						"supported_task_types",
+						JSONUtil.putAll("text_embedding")
+					).put(
+						"type", "int"
+					)
+				)
+			).put(
+				"name", "OpenAI"
+			).put(
+				"service", "openai"
+			).put(
+				"task_types", JSONUtil.putAll("text_embedding", "completion")
+			));
+
+		List<InferenceService> inferenceServices = ReflectionTestUtil.invoke(
+			_elasticsearchInferenceEndpointRegistry, "_toInferenceServices",
+			new Class<?>[] {JSONArray.class}, jsonArray);
+
+		Assert.assertEquals(
+			inferenceServices.toString(), 1, inferenceServices.size());
+
+		InferenceService inferenceService = inferenceServices.get(0);
+
+		Assert.assertEquals("openai", inferenceService.getService());
+		Assert.assertEquals("OpenAI", inferenceService.getName());
+		Assert.assertTrue(
+			inferenceService.getTaskTypes(
+			).contains(
+				"text_embedding"
+			));
+
+		InferenceServiceField apiKeyInferenceServiceField =
+			_findInferenceServiceField(inferenceService, "api_key");
+
+		Assert.assertTrue(apiKeyInferenceServiceField.isRequired());
+		Assert.assertTrue(apiKeyInferenceServiceField.isSensitive());
+
+		InferenceServiceField dimensionsInferenceServiceField =
+			_findInferenceServiceField(inferenceService, "dimensions");
+
+		Assert.assertFalse(dimensionsInferenceServiceField.isRequired());
+		Assert.assertEquals("int", dimensionsInferenceServiceField.getType());
+		Assert.assertEquals(
+			List.of("text_embedding"),
+			dimensionsInferenceServiceField.getSupportedTaskTypes());
+	}
+
+	@Test
 	public void testTestTextEmbeddingInferenceEndpoint() throws Exception {
 		ElasticsearchInferenceClient elasticsearchInferenceClient =
 			Mockito.mock(ElasticsearchInferenceClient.class);
@@ -124,6 +207,20 @@ public class ElasticsearchInferenceEndpointRegistryTest {
 			3,
 			_elasticsearchInferenceEndpointRegistry.
 				testTextEmbeddingInferenceEndpoint("openai-embeddings"));
+	}
+
+	private InferenceServiceField _findInferenceServiceField(
+		InferenceService inferenceService, String key) {
+
+		for (InferenceServiceField inferenceServiceField :
+				inferenceService.getFields()) {
+
+			if (key.equals(inferenceServiceField.getKey())) {
+				return inferenceServiceField;
+			}
+		}
+
+		return null;
 	}
 
 	private InferenceEndpointInfo _inferenceEndpointInfo(
