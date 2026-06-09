@@ -11,11 +11,14 @@ import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.search.rest.dto.v1_0.EmbeddingProviderConfiguration;
 import com.liferay.portal.search.rest.dto.v1_0.EmbeddingProviderValidationResult;
+import com.liferay.portal.search.rest.dto.v1_0.InferenceEndpoint;
+import com.liferay.portal.search.rest.dto.v1_0.InferenceEndpointConfiguration;
 import com.liferay.portal.search.rest.dto.v1_0.SearchRequestBody;
 import com.liferay.portal.search.rest.dto.v1_0.SearchResult;
 import com.liferay.portal.search.rest.dto.v1_0.SuggestionsContributorConfiguration;
 import com.liferay.portal.search.rest.dto.v1_0.SuggestionsContributorResults;
 import com.liferay.portal.search.rest.resource.v1_0.EmbeddingProviderValidationResultResource;
+import com.liferay.portal.search.rest.resource.v1_0.InferenceEndpointResource;
 import com.liferay.portal.search.rest.resource.v1_0.SearchResultResource;
 import com.liferay.portal.search.rest.resource.v1_0.SuggestionResource;
 import com.liferay.portal.vulcan.accept.language.AcceptLanguage;
@@ -53,6 +56,14 @@ public class Mutation {
 			embeddingProviderValidationResultResourceComponentServiceObjects;
 	}
 
+	public static void setInferenceEndpointResourceComponentServiceObjects(
+		ComponentServiceObjects<InferenceEndpointResource>
+			inferenceEndpointResourceComponentServiceObjects) {
+
+		_inferenceEndpointResourceComponentServiceObjects =
+			inferenceEndpointResourceComponentServiceObjects;
+	}
+
 	public static void setSearchResultResourceComponentServiceObjects(
 		ComponentServiceObjects<SearchResultResource>
 			searchResultResourceComponentServiceObjects) {
@@ -84,6 +95,20 @@ public class Mutation {
 				embeddingProviderValidationResultResource.
 					postEmbeddingValidateProviderConfiguration(
 						embeddingProviderConfiguration));
+	}
+
+	@GraphQLField
+	public InferenceEndpoint createEmbeddingInferenceEndpoint(
+			@GraphQLName("inferenceEndpointConfiguration")
+				InferenceEndpointConfiguration inferenceEndpointConfiguration)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_inferenceEndpointResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			inferenceEndpointResource ->
+				inferenceEndpointResource.postEmbeddingInferenceEndpoint(
+					inferenceEndpointConfiguration));
 	}
 
 	@GraphQLField(
@@ -205,6 +230,22 @@ public class Mutation {
 	}
 
 	private void _populateResourceContext(
+			InferenceEndpointResource inferenceEndpointResource)
+		throws Exception {
+
+		inferenceEndpointResource.setContextAcceptLanguage(_acceptLanguage);
+		inferenceEndpointResource.setContextCompany(_company);
+		inferenceEndpointResource.setContextHttpServletRequest(
+			_httpServletRequest);
+		inferenceEndpointResource.setContextHttpServletResponse(
+			_httpServletResponse);
+		inferenceEndpointResource.setContextUriInfo(_uriInfo);
+		inferenceEndpointResource.setContextUser(_user);
+		inferenceEndpointResource.setGroupLocalService(_groupLocalService);
+		inferenceEndpointResource.setRoleLocalService(_roleLocalService);
+	}
+
+	private void _populateResourceContext(
 			SearchResultResource searchResultResource)
 		throws Exception {
 
@@ -241,6 +282,8 @@ public class Mutation {
 	private static ComponentServiceObjects
 		<EmbeddingProviderValidationResultResource>
 			_embeddingProviderValidationResultResourceComponentServiceObjects;
+	private static ComponentServiceObjects<InferenceEndpointResource>
+		_inferenceEndpointResourceComponentServiceObjects;
 	private static ComponentServiceObjects<SearchResultResource>
 		_searchResultResourceComponentServiceObjects;
 	private static ComponentServiceObjects<SuggestionResource>
@@ -265,4 +308,4 @@ public class Mutation {
 		_vulcanBatchEngineImportTaskResource;
 
 }
-// LIFERAY-REST-BUILDER-HASH:1564786562
+// LIFERAY-REST-BUILDER-HASH:1841536111

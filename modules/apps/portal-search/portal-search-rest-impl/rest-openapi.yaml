@@ -86,6 +86,58 @@ components:
                         type: object
                     type: array
             type: object
+        InferenceEndpoint:
+            properties:
+                inferenceId:
+                    type: string
+                service:
+                    type: string
+                taskType:
+                    type: string
+            type: object
+        InferenceEndpointConfiguration:
+            properties:
+                inferenceId:
+                    type: string
+                service:
+                    type: string
+                serviceSettings:
+                    type: object
+            type: object
+        InferenceService:
+            properties:
+                inferenceServiceFields:
+                    items:
+                        $ref: "#/components/schemas/InferenceServiceField"
+                    type: array
+                name:
+                    type: string
+                service:
+                    type: string
+                taskTypes:
+                    items:
+                        type: string
+                    type: array
+            type: object
+        InferenceServiceField:
+            properties:
+                description:
+                    type: string
+                key:
+                    type: string
+                label:
+                    type: string
+                required:
+                    type: boolean
+                sensitive:
+                    type: boolean
+                supportedTaskTypes:
+                    items:
+                        type: string
+                    type: array
+                type:
+                    type: string
+            type: object
         SearchRequestBody:
             description:
                 Request body for POST /search. Carries search context attributes (including blueprint selection and
@@ -702,6 +754,44 @@ paths:
                                     $ref: "#/components/schemas/EmbeddingModel"
                                 type: array
             tags: ["EmbeddingModel"]
+    /embeddings/inference-endpoints:
+        post:
+            operationId: postEmbeddingInferenceEndpoint
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/InferenceEndpointConfiguration"
+                    application/xml:
+                        schema:
+                            $ref: "#/components/schemas/InferenceEndpointConfiguration"
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/InferenceEndpoint"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/InferenceEndpoint"
+            tags: ["InferenceEndpoint"]
+    /embeddings/inference-services:
+        get:
+            operationId: getEmbeddingInferenceServicesPage
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/InferenceService"
+                                type: array
+                        application/xml:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/InferenceService"
+                                type: array
+            tags: ["InferenceEndpoint"]
     /embeddings/validate-provider-configuration:
         post:
             operationId: postEmbeddingValidateProviderConfiguration

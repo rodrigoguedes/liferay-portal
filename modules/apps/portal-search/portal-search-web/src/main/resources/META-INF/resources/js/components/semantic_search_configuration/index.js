@@ -13,6 +13,7 @@ import {fetch, sub} from 'frontend-js-web';
 import React, {useMemo, useState} from 'react';
 
 import {LearnMessageWithoutContext} from '../../shared/LearnMessage';
+import InferenceEndpointCreationForm from './InferenceEndpointCreationForm';
 import Input from './Input';
 import SubmitWarningModal from './SubmitWarningModal';
 import TestConfigurationButton from './TestConfigurationButton';
@@ -1419,39 +1420,55 @@ export default function ({
 						index
 					]?.providerName ===
 						TEXT_EMBEDDING_PROVIDER_TYPES.INFERENCE_ENDPOINT && (
-						<Input
-							disabled={formik.isSubmitting}
-							error={
-								formik.errors
-									.textEmbeddingProviderConfigurationJSONs?.[
-									index
-								]?.attributes?.inferenceId
-							}
-							helpText={Liferay.Language.get(
-								'inference-endpoint-id-help'
-							)}
-							label={Liferay.Language.get('inference-endpoint')}
-							name={`textEmbeddingProviderConfigurationJSONs[${index}].attributes.inferenceId`}
-							onBlur={_handleInputBlur(
-								`textEmbeddingProviderConfigurationJSONs[${index}].attributes.inferenceId`
-							)}
-							onChange={_handleInputChange(
-								`textEmbeddingProviderConfigurationJSONs[${index}].attributes.inferenceId`
-							)}
-							required
-							touched={
-								formik.touched
-									.textEmbeddingProviderConfigurationJSONs?.[
-									index
-								]?.attributes?.inferenceId
-							}
-							value={
-								formik.values
-									.textEmbeddingProviderConfigurationJSONs?.[
-									index
-								]?.attributes?.inferenceId
-							}
-						/>
+						<>
+							<Input
+								disabled={formik.isSubmitting}
+								error={
+									formik.errors
+										.textEmbeddingProviderConfigurationJSONs?.[
+										index
+									]?.attributes?.inferenceId
+								}
+								helpText={Liferay.Language.get(
+									'inference-endpoint-id-help'
+								)}
+								label={Liferay.Language.get(
+									'inference-endpoint'
+								)}
+								name={`textEmbeddingProviderConfigurationJSONs[${index}].attributes.inferenceId`}
+								onBlur={_handleInputBlur(
+									`textEmbeddingProviderConfigurationJSONs[${index}].attributes.inferenceId`
+								)}
+								onChange={_handleInputChange(
+									`textEmbeddingProviderConfigurationJSONs[${index}].attributes.inferenceId`
+								)}
+								required
+								touched={
+									formik.touched
+										.textEmbeddingProviderConfigurationJSONs?.[
+										index
+									]?.attributes?.inferenceId
+								}
+								value={
+									formik.values
+										.textEmbeddingProviderConfigurationJSONs?.[
+										index
+									]?.attributes?.inferenceId
+								}
+							/>
+
+							<InferenceEndpointCreationForm
+								namespace={namespace}
+								onInferenceEndpointCreated={(
+									createdInferenceId
+								) =>
+									formik.setFieldValue(
+										`textEmbeddingProviderConfigurationJSONs[${index}].attributes.inferenceId`,
+										createdInferenceId
+									)
+								}
+							/>
+						</>
 					)}
 
 					{formik.values.textEmbeddingProviderConfigurationJSONs?.[
