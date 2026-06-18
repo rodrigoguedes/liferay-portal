@@ -13,6 +13,7 @@ import {fetch, sub} from 'frontend-js-web';
 import React, {useMemo, useState} from 'react';
 
 import {LearnMessageWithoutContext} from '../../shared/LearnMessage';
+import BYOLLMConfigurationForm from './BYOLLMConfigurationForm';
 import Input from './Input';
 import SubmitWarningModal from './SubmitWarningModal';
 import TestConfigurationButton from './TestConfigurationButton';
@@ -182,6 +183,60 @@ const transformToLabelValueArray = (items = {}) => {
 };
 
 /**
+ * Builds the text embedding provider dropdown options from the visible
+ * providers. The Liferay-integrated providers carry the architectural
+ * `(through Liferay Integration)` suffix only while the BYO-LLM provider
+ * (Elasticsearch Inference Endpoint) is also visible. The label describes
+ * where the LLM call originates, not lifecycle status; no provider is
+ * deprecated.
+ *
+ * @param {object} visibleTextEmbeddingProviders
+ * @param {boolean} elasticsearchInferenceEndpointVisible
+ * @return {Array}
+ */
+const getTextEmbeddingProviderOptions = (
+	visibleTextEmbeddingProviders,
+	elasticsearchInferenceEndpointVisible
+) =>
+	Object.entries(visibleTextEmbeddingProviders).map(([value, label]) => ({
+		label:
+			elasticsearchInferenceEndpointVisible &&
+			value !==
+				TEXT_EMBEDDING_PROVIDER_TYPES.ELASTICSEARCH_INFERENCE_ENDPOINT
+				? sub(Liferay.Language.get('x-through-liferay-integration'), [
+						label,
+					])
+				: label,
+		value,
+	}));
+
+/**
+ * Filters the available text embedding providers down to the ones the
+ * dropdown lists. The BYO-LLM provider (Elasticsearch Inference Endpoint) is
+ * visible only when the `LPD-11319` feature flag is on.
+ *
+ * @param {object} availableTextEmbeddingProviders
+ * @param {boolean} elasticsearchInferenceEndpointVisible
+ * @return {object}
+ */
+const getVisibleTextEmbeddingProviders = (
+	availableTextEmbeddingProviders,
+	elasticsearchInferenceEndpointVisible
+) => {
+	if (elasticsearchInferenceEndpointVisible) {
+		return availableTextEmbeddingProviders;
+	}
+
+	return Object.fromEntries(
+		Object.entries(availableTextEmbeddingProviders).filter(
+			([providerName]) =>
+				providerName !==
+				TEXT_EMBEDDING_PROVIDER_TYPES.ELASTICSEARCH_INFERENCE_ENDPOINT
+		)
+	);
+};
+
+/**
  * Form within semantic search settings page, configures text embedding provider and
  * indexing settings.
  * This can be found on: System Settings > Search Experiences > Semantic Search
@@ -192,6 +247,8 @@ export default function ({
 	availableModelClassNames,
 	availableTextEmbeddingProviders,
 	availableTextTruncationStrategies,
+	externalEmbeddingCapabilityAvailable = true,
+	externalEmbeddingCapabilityReason = '',
 	formName,
 	initialTextEmbeddingCacheTimeout,
 	initialTextEmbeddingProviderConfigurationJSONs,
@@ -200,19 +257,131 @@ export default function ({
 	namespace = '',
 	redirectURL,
 }) {
+	const isElasticsearchInferenceEndpointVisible =
+		!!Liferay.FeatureFlags?.['LPD-11319'] &&
+		Object.keys(availableTextEmbeddingProviders).includes(
+			TEXT_EMBEDDING_PROVIDER_TYPES.ELASTICSEARCH_INFERENCE_ENDPOINT
+		);
+
+	const visibleTextEmbeddingProviders = useMemo(
+		() =>
+			getVisibleTextEmbeddingProviders(
+				availableTextEmbeddingProviders,
+				isElasticsearchInferenceEndpointVisible
+			),
+		[
+			availableTextEmbeddingProviders,
+			isElasticsearchInferenceEndpointVisible,
+		]
+	);
+
 	const resolvedInitialTextEmbeddingProviderConfigurationJSONs = useMemo(
 		() =>
 			resolveInitialTextEmbeddingProviderConfigurationJSONs(
 				initialTextEmbeddingProviderConfigurationJSONs,
-				availableTextEmbeddingProviders
+				visibleTextEmbeddingProviders
 			),
 		[
 			initialTextEmbeddingProviderConfigurationJSONs,
-			availableTextEmbeddingProviders,
+			visibleTextEmbeddingProviders,
 		]
 	);
 
+	const [inferenceEndpointConfiguration, setInferenceEndpointConfiguration] =
+		useState(null);
+	const [inferenceEndpointErrorMessage, setInferenceEndpointErrorMessage] =
+		useState('');
+	const [inferenceEndpointFieldErrors, setInferenceEndpointFieldErrors] =
+		useState({});
+
 	const [showSubmitWarningModal, setShowSubmitWarningModal] = useState(false);
+
+	/**
+	 * Validates the BYO-LLM service settings server-side before the endpoint
+	 * is created, so an invalid model or an out-of-range value is caught with
+	 * a per-field message instead of an unrecoverable Elasticsearch error.
+	 * Returns the field errors, or an empty object when the settings are
+	 * valid.
+	 */
+	const _validateInferenceEndpoint = async () => {
+		try {
+			const response = await fetch(
+				'/o/search/v1.0/inference-endpoint/validate',
+				{
+					body: JSON.stringify(inferenceEndpointConfiguration),
+					headers: new Headers({
+						'Accept': 'application/json',
+						'Accept-Language':
+							Liferay.ThemeDisplay.getBCP47LanguageId(),
+						'Content-Type': 'application/json',
+					}),
+					method: 'POST',
+				}
+			);
+
+			// On a non-OK status there are no per-field errors to show; let
+			// the subsequent create call surface the error inline.
+
+			if (!response.ok) {
+				return {};
+			}
+
+			const responseData = await response.json();
+
+			return responseData.fieldErrors || {};
+		}
+		catch (error) {
+			if (process.env.NODE_ENV === 'development') {
+				console.error(error);
+			}
+
+			return {};
+		}
+	};
+
+	/**
+	 * Creates the Liferay-managed inference endpoint in Elasticsearch from
+	 * the dynamic form values. Returns the error message, or an empty string
+	 * when the creation succeeds.
+	 */
+	const _createInferenceEndpoint = async () => {
+		try {
+			const response = await fetch('/o/search/v1.0/inference-endpoint', {
+				body: JSON.stringify(inferenceEndpointConfiguration),
+				headers: new Headers({
+					'Accept': 'application/json',
+					'Accept-Language':
+						Liferay.ThemeDisplay.getBCP47LanguageId(),
+					'Content-Type': 'application/json',
+				}),
+				method: 'POST',
+			});
+
+			const responseData = await response.json();
+
+			// A 409 Conflict (single-endpoint constraint) and other error
+			// statuses carry the message in "title"; the success body carries
+			// any provider error in "errorMessage".
+
+			if (!response.ok) {
+				return (
+					responseData.title ||
+					responseData.errorMessage ||
+					responseData.message ||
+					Liferay.Language.get('an-unexpected-error-occurred')
+				);
+			}
+
+			return responseData.errorMessage || '';
+		}
+		catch (error) {
+			if (process.env.NODE_ENV === 'development') {
+				console.error(error);
+			}
+
+			return Liferay.Language.get('an-unexpected-error-occurred');
+		}
+	};
 
 	const _handleFormikSubmit = async (values, actions) => {
 		const {
@@ -222,6 +391,49 @@ export default function ({
 			providerName,
 			embeddingVectorDimensions,
 		} = values.textEmbeddingProviderConfigurationJSONs[0];
+
+		// The Elasticsearch Inference Endpoint provider (BYO-LLM) does not go
+		// through the legacy provider validation: embeddings are computed
+		// server-side by Elasticsearch. The save creates the Liferay-managed
+		// inference endpoint from the dynamic form values first and aborts
+		// with an inline error when Elasticsearch rejects the configuration.
+
+		if (
+			providerName ===
+			TEXT_EMBEDDING_PROVIDER_TYPES.ELASTICSEARCH_INFERENCE_ENDPOINT
+		) {
+			if (inferenceEndpointConfiguration?.service) {
+				const fieldErrors = await _validateInferenceEndpoint();
+
+				if (Object.keys(fieldErrors).length) {
+					setInferenceEndpointFieldErrors(fieldErrors);
+
+					actions.setSubmitting(false);
+
+					return;
+				}
+
+				setInferenceEndpointFieldErrors({});
+
+				const createErrorMessage = await _createInferenceEndpoint();
+
+				if (createErrorMessage) {
+					setInferenceEndpointErrorMessage(createErrorMessage);
+
+					actions.setSubmitting(false);
+
+					return;
+				}
+			}
+
+			setInferenceEndpointErrorMessage('');
+
+			actions.setSubmitting(false);
+
+			submitForm(document[formName]);
+
+			return;
+		}
 
 		const {
 			accessToken,
@@ -384,27 +596,38 @@ export default function ({
 							);
 					}
 
-					// Validate "Max Character Count" field.
+					// Validate "Max Character Count" field. The field is not
+					// rendered for the Elasticsearch Inference Endpoint
+					// provider, so it must not be validated there either, or
+					// an invalid value inherited from another provider would
+					// silently block the submission.
 
 					if (
-						!textEmbeddingProviderConfigurationJSON.attributes
-							?.maxCharacterCount === ''
+						textEmbeddingProviderConfigurationJSON.providerName !==
+						TEXT_EMBEDDING_PROVIDER_TYPES.ELASTICSEARCH_INFERENCE_ENDPOINT
 					) {
-						textEmbeddingProviderConfigurationJSONError.attributes.maxCharacterCount =
-							Liferay.Language.get('this-field-is-required');
-					}
-					else {
 						if (
+							!textEmbeddingProviderConfigurationJSON.attributes
+								?.maxCharacterCount ||
 							textEmbeddingProviderConfigurationJSON.attributes
-								?.maxCharacterCount < 50
+								?.maxCharacterCount === ''
 						) {
 							textEmbeddingProviderConfigurationJSONError.attributes.maxCharacterCount =
-								sub(
-									Liferay.Language.get(
-										'please-enter-a-value-greater-than-or-equal-to-x'
-									),
-									['50']
-								);
+								Liferay.Language.get('this-field-is-required');
+						}
+						else {
+							if (
+								textEmbeddingProviderConfigurationJSON
+									.attributes?.maxCharacterCount < 50
+							) {
+								textEmbeddingProviderConfigurationJSONError.attributes.maxCharacterCount =
+									sub(
+										Liferay.Language.get(
+											'please-enter-a-value-greater-than-or-equal-to-x'
+										),
+										['50']
+									);
+							}
 						}
 					}
 
@@ -716,17 +939,31 @@ export default function ({
 								index
 							]?.providerName
 						}
-						items={transformToLabelValueArray(
-							availableTextEmbeddingProviders
+						items={getTextEmbeddingProviderOptions(
+							visibleTextEmbeddingProviders,
+							isElasticsearchInferenceEndpointVisible
 						)}
 						label={Liferay.Language.get('text-embedding-provider')}
 						name={`textEmbeddingProviderConfigurationJSONs[${index}].providerName`}
 						onBlur={_handleInputBlur(
 							`textEmbeddingProviderConfigurationJSONs[${index}].providerName`
 						)}
-						onChange={_handleInputChange(
-							`textEmbeddingProviderConfigurationJSONs[${index}].providerName`
-						)}
+						onChange={(event) => {
+
+							// The BYO-LLM endpoint configuration belongs to
+							// the previously selected provider and must not
+							// survive a provider switch, or a later save
+							// would silently create the endpoint from the
+							// stale values
+
+							setInferenceEndpointConfiguration(null);
+							setInferenceEndpointErrorMessage('');
+							setInferenceEndpointFieldErrors({});
+
+							_handleInputChange(
+								`textEmbeddingProviderConfigurationJSONs[${index}].providerName`
+							)(event);
+						}}
 						type="select"
 						value={
 							formik.values
@@ -735,6 +972,16 @@ export default function ({
 							]?.providerName
 						}
 					>
+						{isElasticsearchInferenceEndpointVisible && (
+							<ClayForm.FeedbackGroup>
+								<ClayForm.Text>
+									{Liferay.Language.get(
+										'text-embedding-provider-architecture-help'
+									)}
+								</ClayForm.Text>
+							</ClayForm.FeedbackGroup>
+						)}
+
 						{formik.values
 							.textEmbeddingProviderConfigurationJSONs?.[index]
 							?.providerName ===
@@ -890,6 +1137,42 @@ export default function ({
 								}
 							/>
 						</>
+					)}
+
+					{formik.values.textEmbeddingProviderConfigurationJSONs?.[
+						index
+					]?.providerName ===
+						TEXT_EMBEDDING_PROVIDER_TYPES.ELASTICSEARCH_INFERENCE_ENDPOINT && (
+						<BYOLLMConfigurationForm
+							disabled={formik.isSubmitting}
+							errorMessage={inferenceEndpointErrorMessage}
+							fieldErrors={inferenceEndpointFieldErrors}
+							onInferenceEndpointConfigurationChange={(
+								newInferenceEndpointConfiguration
+							) => {
+								setInferenceEndpointConfiguration(
+									newInferenceEndpointConfiguration
+								);
+								setInferenceEndpointErrorMessage('');
+								setInferenceEndpointFieldErrors({});
+
+								const service =
+									newInferenceEndpointConfiguration?.service ||
+									'';
+
+								if (
+									formik.values
+										.textEmbeddingProviderConfigurationJSONs?.[
+										index
+									]?.attributes?.service !== service
+								) {
+									formik.setFieldValue(
+										`textEmbeddingProviderConfigurationJSONs[${index}].attributes.service`,
+										service
+									);
+								}
+							}}
+						/>
 					)}
 
 					{formik.values.textEmbeddingProviderConfigurationJSONs?.[
@@ -1426,7 +1709,7 @@ export default function ({
 								?.attributes?.autoTruncate
 						}
 						availableTextEmbeddingProviders={
-							availableTextEmbeddingProviders
+							visibleTextEmbeddingProviders
 						}
 						basicAuthPassword={
 							formik.values
@@ -1524,80 +1807,91 @@ export default function ({
 						{Liferay.Language.get('index-settings')}
 					</h3>
 
-					<Input
-						disabled={formik.isSubmitting}
-						error={
-							formik.errors
-								.textEmbeddingProviderConfigurationJSONs?.[
-								index
-							]?.attributes?.maxCharacterCount
-						}
-						helpText={Liferay.Language.get(
-							'text-embedding-provider-max-character-count-help'
-						)}
-						label={Liferay.Language.get('max-character-count')}
-						name={`textEmbeddingProviderConfigurationJSONs[${index}].attributes.maxCharacterCount`}
-						onBlur={_handleInputBlur(
-							`textEmbeddingProviderConfigurationJSONs[${index}].attributes.maxCharacterCount`
-						)}
-						onChange={_handleInputChange(
-							`textEmbeddingProviderConfigurationJSONs[${index}].attributes.maxCharacterCount`
-						)}
-						options={{min: 50}}
-						required
-						touched={
-							formik.touched
-								.textEmbeddingProviderConfigurationJSONs?.[
-								index
-							]?.attributes?.maxCharacterCount
-						}
-						type="number"
-						value={
-							formik.values
-								.textEmbeddingProviderConfigurationJSONs?.[
-								index
-							]?.attributes?.maxCharacterCount
-						}
-					>
-						<ClayForm.FeedbackGroup>
-							<ClayForm.Text>
-								{Liferay.Language.get(
-									'text-embedding-provider-max-character-count-refer-to-doc-help'
+					{formik.values.textEmbeddingProviderConfigurationJSONs?.[
+						index
+					]?.providerName !==
+						TEXT_EMBEDDING_PROVIDER_TYPES.ELASTICSEARCH_INFERENCE_ENDPOINT && (
+						<>
+							<Input
+								disabled={formik.isSubmitting}
+								error={
+									formik.errors
+										.textEmbeddingProviderConfigurationJSONs?.[
+										index
+									]?.attributes?.maxCharacterCount
+								}
+								helpText={Liferay.Language.get(
+									'text-embedding-provider-max-character-count-help'
 								)}
-							</ClayForm.Text>
-						</ClayForm.FeedbackGroup>
-					</Input>
+								label={Liferay.Language.get(
+									'max-character-count'
+								)}
+								name={`textEmbeddingProviderConfigurationJSONs[${index}].attributes.maxCharacterCount`}
+								onBlur={_handleInputBlur(
+									`textEmbeddingProviderConfigurationJSONs[${index}].attributes.maxCharacterCount`
+								)}
+								onChange={_handleInputChange(
+									`textEmbeddingProviderConfigurationJSONs[${index}].attributes.maxCharacterCount`
+								)}
+								options={{min: 50}}
+								required
+								touched={
+									formik.touched
+										.textEmbeddingProviderConfigurationJSONs?.[
+										index
+									]?.attributes?.maxCharacterCount
+								}
+								type="number"
+								value={
+									formik.values
+										.textEmbeddingProviderConfigurationJSONs?.[
+										index
+									]?.attributes?.maxCharacterCount
+								}
+							>
+								<ClayForm.FeedbackGroup>
+									<ClayForm.Text>
+										{Liferay.Language.get(
+											'text-embedding-provider-max-character-count-refer-to-doc-help'
+										)}
+									</ClayForm.Text>
+								</ClayForm.FeedbackGroup>
+							</Input>
 
-					<Input
-						disabled={formik.isSubmitting}
-						error={
-							formik.errors
-								.textEmbeddingProviderConfigurationJSONs?.[
-								index
-							]?.attributes?.textTruncationStrategy
-						}
-						helpText={Liferay.Language.get(
-							'text-embedding-provider-text-truncation-strategy-help'
-						)}
-						items={transformToLabelValueArray(
-							availableTextTruncationStrategies
-						)}
-						label={Liferay.Language.get('text-truncation-strategy')}
-						name={`textEmbeddingProviderConfigurationJSONs[${index}].attributes.textTruncationStrategy`}
-						onBlur={_handleInputBlur(
-							`textEmbeddingProviderConfigurationJSONs[${index}].attributes.textTruncationStrategy`
-						)}
-						onChange={_handleInputChange(
-							`textEmbeddingProviderConfigurationJSONs[${index}].attributes.textTruncationStrategy`
-						)}
-						type="select"
-						value={
-							formik.values
-								.textEmbeddingProviderConfigurationJSONs?.[
-								index
-							]?.attributes?.textTruncationStrategy
-						}
-					/>
+							<Input
+								disabled={formik.isSubmitting}
+								error={
+									formik.errors
+										.textEmbeddingProviderConfigurationJSONs?.[
+										index
+									]?.attributes?.textTruncationStrategy
+								}
+								helpText={Liferay.Language.get(
+									'text-embedding-provider-text-truncation-strategy-help'
+								)}
+								items={transformToLabelValueArray(
+									availableTextTruncationStrategies
+								)}
+								label={Liferay.Language.get(
+									'text-truncation-strategy'
+								)}
+								name={`textEmbeddingProviderConfigurationJSONs[${index}].attributes.textTruncationStrategy`}
+								onBlur={_handleInputBlur(
+									`textEmbeddingProviderConfigurationJSONs[${index}].attributes.textTruncationStrategy`
+								)}
+								onChange={_handleInputChange(
+									`textEmbeddingProviderConfigurationJSONs[${index}].attributes.textTruncationStrategy`
+								)}
+								type="select"
+								value={
+									formik.values
+										.textEmbeddingProviderConfigurationJSONs?.[
+										index
+									]?.attributes?.textTruncationStrategy
+								}
+							/>
+						</>
+					)}
 
 					<Input
 						disabled={formik.isSubmitting}
@@ -1708,6 +2002,19 @@ export default function ({
 
 	return (
 		<div className="semantic-search-settings-root">
+			{Liferay.FeatureFlags?.['LPD-11319'] &&
+				!externalEmbeddingCapabilityAvailable && (
+					<ClayAlert
+						data-qa-id="bringYourOwnLLMCapabilityAlert"
+						displayType="warning"
+						title={Liferay.Language.get(
+							'bring-your-own-llm-via-elasticsearch-inference-endpoints-is-unavailable'
+						)}
+					>
+						{externalEmbeddingCapabilityReason}
+					</ClayAlert>
+				)}
+
 			{_renderEmbeddingProviderConfigurationInputs(0)}
 
 			<SubmitWarningModal

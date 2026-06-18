@@ -10,6 +10,11 @@ import co.elastic.clients.elasticsearch._types.ElasticsearchVersionInfo;
 import co.elastic.clients.elasticsearch._types.Time;
 import co.elastic.clients.elasticsearch._types.TimeUnit;
 import co.elastic.clients.elasticsearch.core.InfoResponse;
+import co.elastic.clients.elasticsearch.license.ElasticsearchLicenseClient;
+import co.elastic.clients.elasticsearch.license.GetLicenseResponse;
+import co.elastic.clients.elasticsearch.license.LicenseStatus;
+import co.elastic.clients.elasticsearch.license.LicenseType;
+import co.elastic.clients.elasticsearch.license.get.LicenseInformation;
 import co.elastic.clients.elasticsearch.nodes.ElasticsearchNodesClient;
 import co.elastic.clients.elasticsearch.nodes.NodesInfoRequest;
 import co.elastic.clients.elasticsearch.nodes.NodesInfoResponse;
@@ -181,6 +186,19 @@ public class ElasticsearchSearchEngineInformation
 		return vendor;
 	}
 
+	@Override
+	public boolean isInferenceAPISupported() {
+		LicenseType licenseType = _getActiveLicenseType();
+
+		if ((licenseType == LicenseType.Trial) ||
+			(licenseType == LicenseType.Enterprise)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
 	@Reference
 	protected ConfigurationAdmin configurationAdmin;
 
@@ -307,6 +325,49 @@ public class ElasticsearchSearchEngineInformation
 
 		_addConnectionInformation(
 			elasticsearchConnection, connectionInformationList, labels);
+	}
+
+	private LicenseType _getActiveLicenseType() {
+		try {
+			ElasticsearchClient elasticsearchClient =
+				elasticsearchConnectionManager.getElasticsearchClient();
+
+			ElasticsearchLicenseClient elasticsearchLicenseClient =
+				elasticsearchClient.license();
+
+			GetLicenseResponse getLicenseResponse =
+				elasticsearchLicenseClient.get();
+
+			if (getLicenseResponse == null) {
+				return null;
+			}
+
+			LicenseInformation licenseInformation =
+				getLicenseResponse.license();
+
+			if ((licenseInformation == null) ||
+				(licenseInformation.status() != LicenseStatus.Active)) {
+
+				return null;
+			}
+
+			return licenseInformation.type();
+		}
+		catch (Exception exception) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(
+					"Unable to query the Elasticsearch \"_license\" API: " +
+						exception.getMessage());
+			}
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					"Unable to query the Elasticsearch \"_license\" API",
+					exception);
+			}
+
+			return null;
+		}
 	}
 
 	private String _getClusterNodesString(
