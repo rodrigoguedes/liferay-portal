@@ -28,6 +28,7 @@ function TestConfigurationButton({
 	embeddingVectorDimensions,
 	errors,
 	hostAddress,
+	inferenceId,
 	languageIds,
 	location,
 	maxCharacterCount,
@@ -116,6 +117,15 @@ function TestConfigurationButton({
 				location,
 				model,
 				projectId,
+			};
+		}
+
+		if (
+			textEmbeddingProvider ===
+			TEXT_EMBEDDING_PROVIDER_TYPES.INFERENCE_ENDPOINT
+		) {
+			return {
+				inferenceId,
 			};
 		}
 
@@ -218,6 +228,30 @@ function TestConfigurationButton({
 					throw new Error(responseData.message);
 				}
 
+				// Elasticsearch owns the embedding dimensions for an inference
+				// endpoint, so a successful response means the endpoint works.
+
+				if (
+					textEmbeddingProvider ===
+					TEXT_EMBEDDING_PROVIDER_TYPES.INFERENCE_ENDPOINT
+				) {
+					if (Number(responseData.expectedDimensions) > 0) {
+						return setTestResultsMessage({
+							message: Liferay.Language.get(
+								'connection-is-successful'
+							),
+							type: 'success',
+						});
+					}
+
+					return setTestResultsMessage({
+						message: Liferay.Language.get(
+							'the-text-embedding-provider-returned-no-results'
+						),
+						type: 'danger',
+					});
+				}
+
 				// If the response expected dimensions is 0. This means no
 				// results were returned from the text embedding provider.
 
@@ -312,6 +346,13 @@ function TestConfigurationButton({
 				errors?.attributes?.location ||
 				errors?.attributes?.projectId
 			);
+		}
+
+		if (
+			textEmbeddingProvider ===
+			TEXT_EMBEDDING_PROVIDER_TYPES.INFERENCE_ENDPOINT
+		) {
+			return errors?.attributes?.inferenceId;
 		}
 
 		return false;

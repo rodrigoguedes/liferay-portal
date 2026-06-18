@@ -44,6 +44,10 @@ public interface QueryVisitor<T> {
 
 	public T visit(IdsQuery idsQuery);
 
+	public default T visit(KnnQuery knnQuery) {
+		throw new UnsupportedOperationException();
+	}
+
 	public T visit(MatchAllQuery matchAllQuery);
 
 	public T visit(MatchPhrasePrefixQuery matchPhrasePrefixQuery);
@@ -68,7 +72,15 @@ public interface QueryVisitor<T> {
 
 	public T visit(ScriptQuery scriptQuery);
 
+	public default T visit(SemanticQuery semanticQuery) {
+		throw new UnsupportedOperationException();
+	}
+
 	public T visit(SimpleStringQuery simpleStringQuery);
+
+	public default T visit(SparseVectorQuery sparseVectorQuery) {
+		throw new UnsupportedOperationException();
+	}
 
 	public T visit(StringQuery stringQuery);
 

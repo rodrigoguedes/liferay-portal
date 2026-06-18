@@ -10,6 +10,7 @@ import com.liferay.osgi.service.tracker.collections.list.ServiceTrackerListFacto
 import com.liferay.portal.kernel.feature.flag.FeatureFlagListener;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.StringUtil;
@@ -22,6 +23,7 @@ import com.liferay.portal.search.ml.embedding.text.TextEmbeddingRetriever;
 import com.liferay.portal.search.ml.embedding.util.TextExtractionUtil;
 import com.liferay.portal.search.rest.dto.v1_0.EmbeddingProviderConfiguration;
 import com.liferay.portal.search.rest.text.embeddings.configuration.TextEmbeddingProvider;
+import com.liferay.portal.search.semantic.InferenceEndpointRegistry;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -74,6 +76,11 @@ public class TextEmbeddingRetrieverImpl implements TextEmbeddingRetriever {
 		}
 
 		String providerName = embeddingProviderConfiguration.getProviderName();
+
+		if (Objects.equals(providerName, "inference-endpoint")) {
+			return _getInferenceEndpointEmbeddingProviderStatus(
+				embeddingProviderConfiguration);
+		}
 
 		try {
 			TextEmbeddingProvider textEmbeddingProvider =
@@ -190,6 +197,12 @@ public class TextEmbeddingRetrieverImpl implements TextEmbeddingRetriever {
 				_devTextEmbeddingsEnabled = enabled,
 			MapUtil.singletonDictionary("feature.flag.key", "LPD-31789"));
 
+		_externalEmbeddingsServiceRegistration = bundleContext.registerService(
+			FeatureFlagListener.class,
+			(companyId, featureFlagKey, enabled) ->
+				_externalEmbeddingsEnabled = enabled,
+			MapUtil.singletonDictionary("feature.flag.key", "LPD-11319"));
+
 		_textEmbeddingProviderServiceTrackerList =
 			ServiceTrackerListFactory.open(
 				bundleContext, TextEmbeddingProvider.class);
@@ -197,6 +210,8 @@ public class TextEmbeddingRetrieverImpl implements TextEmbeddingRetriever {
 
 	@Deactivate
 	protected void deactivate() {
+		_externalEmbeddingsServiceRegistration.unregister();
+
 		_serviceRegistration.unregister();
 	}
 
@@ -227,6 +242,59 @@ public class TextEmbeddingRetrieverImpl implements TextEmbeddingRetriever {
 
 		return semanticSearchConfiguration.
 			textEmbeddingProviderConfigurationJSONs();
+	}
+
+	private EmbeddingProviderStatus
+		_getInferenceEndpointEmbeddingProviderStatus(
+			EmbeddingProviderConfiguration embeddingProviderConfiguration) {
+
+		String providerName = embeddingProviderConfiguration.getProviderName();
+
+		InferenceEndpointRegistry inferenceEndpointRegistry =
+			_inferenceEndpointRegistrySnapshot.get();
+
+		if (inferenceEndpointRegistry == null) {
+			return new EmbeddingProviderStatus.EmbeddingProviderStatusBuilder(
+			).errorMessage(
+				"Inference endpoints are not available on the active search " +
+					"engine"
+			).providerName(
+				providerName
+			).build();
+		}
+
+		Map<String, Object> attributes =
+			(Map<String, Object>)embeddingProviderConfiguration.getAttributes();
+
+		String inferenceId = (attributes == null) ? null :
+			MapUtil.getString(attributes, "inferenceId", null);
+
+		if (Validator.isNull(inferenceId)) {
+			return new EmbeddingProviderStatus.EmbeddingProviderStatusBuilder(
+			).errorMessage(
+				"An inference endpoint must be selected"
+			).providerName(
+				providerName
+			).build();
+		}
+
+		try {
+			return new EmbeddingProviderStatus.EmbeddingProviderStatusBuilder(
+			).embeddingVectorDimensions(
+				inferenceEndpointRegistry.testTextEmbeddingInferenceEndpoint(
+					inferenceId)
+			).providerName(
+				providerName
+			).build();
+		}
+		catch (Exception exception) {
+			return new EmbeddingProviderStatus.EmbeddingProviderStatusBuilder(
+			).errorMessage(
+				exception.getMessage()
+			).providerName(
+				providerName
+			).build();
+		}
 	}
 
 	private TextEmbeddingProvider _getTextEmbeddingProvider(
@@ -283,6 +351,10 @@ public class TextEmbeddingRetrieverImpl implements TextEmbeddingRetriever {
 			return false;
 		}
 
+		if (Objects.equals(textEmbeddingProviderName, "inference-endpoint")) {
+			return _externalEmbeddingsEnabled;
+		}
+
 		if (_devProviders.contains(textEmbeddingProviderName)) {
 			return _devTextEmbeddingsEnabled;
 		}
@@ -300,11 +372,17 @@ public class TextEmbeddingRetrieverImpl implements TextEmbeddingRetriever {
 		TextEmbeddingRetrieverImpl.class);
 
 	private static final List<String> _devProviders = List.of("vertex-ai");
+	private static final Snapshot<InferenceEndpointRegistry>
+		_inferenceEndpointRegistrySnapshot = new Snapshot<>(
+			TextEmbeddingRetrieverImpl.class, InferenceEndpointRegistry.class,
+			null, true);
 	private static final List<String> _supportedProviders = List.of("openai");
 
 	private volatile boolean _betaTextEmbeddingsEnabled;
 	private boolean _devTextEmbeddingsEnabled;
 	private final List<String> _disabledProviderNames = new ArrayList<>();
+	private volatile boolean _externalEmbeddingsEnabled;
+	private ServiceRegistration<?> _externalEmbeddingsServiceRegistration;
 
 	@Reference
 	private SemanticSearchConfigurationProvider

@@ -55,6 +55,7 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.TextExtractor;
 import com.liferay.portal.repository.liferayrepository.model.LiferayFileEntry;
 import com.liferay.portal.search.ml.embedding.text.TextEmbeddingDocumentContributor;
+import com.liferay.portal.search.ml.embedding.text.helper.SemanticTextContentBuilder;
 import com.liferay.portal.search.spi.model.index.contributor.ModelDocumentContributor;
 import com.liferay.trash.TrashHelper;
 
@@ -222,9 +223,12 @@ public class DLFileEntryModelDocumentContributor
 
 				_textEmbeddingDocumentContributor.contribute(
 					document, dlFileEntry,
-					StringBundler.concat(
-						dlFileEntry.getTitle(), StringPool.PERIOD,
-						StringPool.SPACE, text));
+					new SemanticTextContentBuilder(
+					).append(
+						"Title", dlFileEntry.getTitle()
+					).append(
+						"Content/Body", text
+					).build());
 			}
 		}
 		catch (Throwable throwable) {
