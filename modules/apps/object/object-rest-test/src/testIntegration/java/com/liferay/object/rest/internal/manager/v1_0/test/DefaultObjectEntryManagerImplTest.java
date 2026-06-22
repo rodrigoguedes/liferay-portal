@@ -6105,6 +6105,62 @@ public class DefaultObjectEntryManagerImplTest
 	}
 
 	@Test
+	@TestInfo("LPD-93952")
+	public void testGetObjectEntriesFilterByEmptyRelationshipExternalReferenceCode()
+		throws Exception {
+
+		ObjectEntry parentObjectEntry =
+			_defaultObjectEntryManager.addObjectEntry(
+				_simpleDTOConverterContext, _objectDefinition1,
+				new ObjectEntry() {
+					{
+						properties = HashMapBuilder.<String, Object>put(
+							"textObjectFieldName", RandomTestUtil.randomString()
+						).build();
+					}
+				},
+				ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		ObjectEntry linkedObjectEntry =
+			_defaultObjectEntryManager.addObjectEntry(
+				dtoConverterContext, _objectDefinition2,
+				new ObjectEntry() {
+					{
+						properties = HashMapBuilder.<String, Object>put(
+							_objectRelationshipFieldName,
+							parentObjectEntry.getId()
+						).put(
+							"textObjectFieldName", RandomTestUtil.randomString()
+						).build();
+					}
+				},
+				ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		ObjectEntry unlinkedObjectEntry =
+			_defaultObjectEntryManager.addObjectEntry(
+				dtoConverterContext, _objectDefinition2,
+				new ObjectEntry() {
+					{
+						properties = HashMapBuilder.<String, Object>put(
+							"textObjectFieldName", RandomTestUtil.randomString()
+						).build();
+					}
+				},
+				ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		_testGetObjectEntriesFilterByEmptyRelationshipExternalReferenceCode(
+			buildEqualsExpressionFilterString(
+				_objectRelationshipERCObjectFieldName, StringPool.BLANK),
+			unlinkedObjectEntry.getId());
+
+		_testGetObjectEntriesFilterByEmptyRelationshipExternalReferenceCode(
+			buildEqualsExpressionFilterString(
+				_objectRelationshipERCObjectFieldName,
+				parentObjectEntry.getExternalReferenceCode()),
+			linkedObjectEntry.getId());
+	}
+
+	@Test
 	public void testGetObjectEntriesWithAccountEntryRestricted1()
 		throws Exception {
 
@@ -12410,6 +12466,28 @@ public class DefaultObjectEntryManagerImplTest
 
 		Assert.assertNull(
 			_objectEntryLocalService.fetchObjectEntry(objectEntryAA2.getId()));
+	}
+
+	private void
+			_testGetObjectEntriesFilterByEmptyRelationshipExternalReferenceCode(
+				String filterString, Long... expectedObjectEntryIds)
+		throws Exception {
+
+		Page<ObjectEntry> page = getObjectEntries(
+			HashMapBuilder.put(
+				"filter", filterString
+			).build(),
+			null);
+
+		List<Long> actualObjectEntryIds = new ArrayList<>();
+
+		for (ObjectEntry objectEntry : page.getItems()) {
+			actualObjectEntryIds.add(objectEntry.getId());
+		}
+
+		Assert.assertEquals(
+			page.toString(), Arrays.asList(expectedObjectEntryIds),
+			actualObjectEntryIds);
 	}
 
 	private void _testGetObjectEntriesWithAccountEntryRestricted2(

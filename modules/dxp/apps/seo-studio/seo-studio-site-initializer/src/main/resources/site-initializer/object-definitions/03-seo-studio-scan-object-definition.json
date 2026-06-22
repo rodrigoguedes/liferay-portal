@@ -39,6 +39,19 @@
 		{
 			"DBType": "String",
 			"businessType": "Text",
+			"externalReferenceCode": "EXECUTION_ID",
+			"indexed": true,
+			"indexedAsKeyword": true,
+			"label": {
+				"en_US": "Execution ID"
+			},
+			"name": "executionId",
+			"system": true,
+			"type": "String"
+		},
+		{
+			"DBType": "String",
+			"businessType": "Text",
 			"externalReferenceCode": "NAME",
 			"indexed": true,
 			"indexedAsKeyword": true,

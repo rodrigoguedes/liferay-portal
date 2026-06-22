@@ -12,8 +12,10 @@ import classNames from 'classnames';
 import {dateUtils} from 'frontend-js-web';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 
-import {ITask} from '../../../../utils/types';
+import {ITask, ITaskObjectEntry} from '../../../../utils/types';
 import {UPDATE_TASKS_QUICK_FILTER_VISIBILITY} from '../../../task/TasksQuickFilters';
+import CalendarMoreLinkPopover from './CalendarMoreLinkPopover';
+import CalendarTaskCard from './CalendarTaskCard';
 
 import './CalendarView.scss';
 
@@ -23,11 +25,19 @@ interface CalendarViewProps {
 	items: ITask[];
 }
 
+interface MoreLinkPopover {
+	alignElement: HTMLElement;
+	date: Date;
+	tasks: ITaskObjectEntry[];
+}
+
 export default function CalendarView({items}: CalendarViewProps) {
 	const calendarRef = useRef<FullCalendar>(null);
 
 	const [datePickerExpanded, setDatePickerExpanded] = useState(false);
 	const [datePickerValue, setDatePickerValue] = useState('');
+	const [moreLinkPopover, setMoreLinkPopover] =
+		useState<MoreLinkPopover | null>(null);
 	const [title, setTitle] = useState('');
 
 	const events = useMemo(
@@ -36,12 +46,21 @@ export default function CalendarView({items}: CalendarViewProps) {
 				.filter((item) => item.embedded?.dueDate)
 				.map((item) => ({
 					allDay: true,
+
+					// Attach the full task entry to the event so the custom
+					// renderers (eventContent and the "more" popover) can read
+					// it back through event.extendedProps.
+
+					extendedProps: {task: item.embedded},
 					id: String(item.embedded.id),
 					start: item.embedded.dueDate.slice(0, 10),
 					title: item.embedded.title,
 				})),
 		[items]
 	);
+
+	const currentYear = new Date().getFullYear();
+	const locale = Liferay.ThemeDisplay.getBCP47LanguageId();
 
 	useEffect(() => {
 		Liferay.fire(UPDATE_TASKS_QUICK_FILTER_VISIBILITY, {visible: false});
@@ -50,9 +69,6 @@ export default function CalendarView({items}: CalendarViewProps) {
 			Liferay.fire(UPDATE_TASKS_QUICK_FILTER_VISIBILITY, {visible: true});
 		};
 	}, []);
-
-	const currentYear = new Date().getFullYear();
-	const locale = Liferay.ThemeDisplay.getBCP47LanguageId();
 
 	return (
 		<div className="lfr__calendar-view">
@@ -159,12 +175,57 @@ export default function CalendarView({items}: CalendarViewProps) {
 			<FullCalendar
 				datesSet={({view}) => setTitle(view.title)}
 				dayHeaderFormat={{weekday: 'long'}}
+				dayMaxEvents
+				eventContent={(arg) => (
+					<CalendarTaskCard task={arg.event.extendedProps.task} />
+				)}
 				events={events}
 				headerToolbar={false}
 				initialView="dayGridMonth"
+				moreLinkClassNames={[
+					'btn',
+					'btn-outline-secondary',
+					'btn-outline-borderless',
+				]}
+				moreLinkClick={(arg) => {
+					setMoreLinkPopover({
+						alignElement: arg.jsEvent.currentTarget as HTMLElement,
+						date: arg.date,
+						tasks: arg.allSegs.map(
+							(seg) => seg.event.extendedProps.task
+						),
+					});
+
+					// Prevent FullCalendar's built-in popover from opening.
+					// It stays closed only when the handler returns a truthy
+					// value other than "popover". The return type is
+					// "string | void", which rejects a boolean, so "true" is
+					// force-cast to void for the compiler; at runtime the
+					// value is still true.
+
+					return true as unknown as void;
+				}}
+				moreLinkContent={(arg) => (
+					<>
+						{`${arg.num} ${Liferay.Language.get('more')}`}
+
+						<span className="inline-item inline-item-after">
+							<ClayIcon symbol="caret-bottom" />
+						</span>
+					</>
+				)}
+				moreLinkHint={Liferay.Language.get('view-all-tasks')}
 				plugins={[dayGridPlugin]}
 				ref={calendarRef}
 			/>
+
+			{moreLinkPopover && (
+				<CalendarMoreLinkPopover
+					alignElement={moreLinkPopover.alignElement}
+					onClose={() => setMoreLinkPopover(null)}
+					tasks={moreLinkPopover.tasks}
+				/>
+			)}
 		</div>
 	);
 }

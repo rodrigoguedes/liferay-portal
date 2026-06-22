@@ -578,6 +578,207 @@ test(
 );
 
 test(
+	'A custom event attribute shows its sample data and data type, and a display name over 255 characters is rejected',
+	{tag: '@LRAC-10011'},
+	async ({analyticsChannel: channel, apiHelpers, page, project}) => {
+		const attributes = [
+			{dataType: 'STRING', name: 'category', value: 'wetsuit'},
+			{dataType: 'NUMBER', name: 'price', value: '259.95'},
+			{
+				dataType: 'DATE',
+				name: 'birthdate',
+				value: '2021-11-25T14:36:30.685Z',
+			},
+			{dataType: 'BOOLEAN', name: 'like', value: 'true'},
+		];
+
+		await createCustomEvent({
+			apiHelpers,
+			attributes,
+			channelId: channel.id,
+			eventName: 'event' + getRandomString(),
+		});
+
+		async function openAttribute(attributeName: string) {
+			await navigateToACSettingsViaURL({
+				acPage: ACPage.eventAttributesPage,
+				page,
+				projectID: project.groupId,
+			});
+
+			await page
+				.getByRole('link', {exact: true, name: 'Attributes'})
+				.click();
+
+			await page.getByPlaceholder('Search').fill(attributeName);
+
+			await page.keyboard.press('Enter');
+
+			await page
+				.getByRole('link', {exact: true, name: attributeName})
+				.click();
+		}
+
+		// Each attribute shows its ingested sample value and its data type
+
+		for (const {dataType, name, value} of attributes) {
+			await openAttribute(name);
+
+			await expect(page.getByText(value, {exact: true})).toBeVisible();
+
+			await expect(page.getByText(dataType, {exact: true})).toBeVisible();
+		}
+
+		// A display name longer than 255 characters is rejected
+
+		await openAttribute('category');
+
+		await page.getByRole('button', {name: 'Edit'}).click();
+
+		await page.getByLabel('Display Name').fill('a'.repeat(256));
+
+		await page.getByLabel('Display Name').blur();
+
+		await expect(page.getByText('Exceeds maximum length.')).toBeVisible();
+	}
+);
+
+test(
+	'Global attributes can be searched and an unknown name yields no results',
+	{tag: '@LRAC-10217'},
+	async ({page, project}) => {
+		await navigateToACSettingsViaURL({
+			acPage: ACPage.definitionsEventAttributesGlobalPage,
+			page,
+			projectID: project.groupId,
+		});
+
+		// Every default global attribute is found by its name
+
+		for (const globalAttribute of [
+			'canonicalUrl',
+			'pageDescription',
+			'pageTitle',
+		]) {
+			await page.getByPlaceholder('Search').fill(globalAttribute);
+
+			await page.keyboard.press('Enter');
+
+			await expect(
+				page.getByRole('link', {exact: true, name: globalAttribute})
+			).toBeVisible();
+		}
+
+		// A name that matches no global attribute yields the empty state
+
+		await page.getByPlaceholder('Search').fill('acqa');
+
+		await page.keyboard.press('Enter');
+
+		await expect(
+			page.getByText('There are no results found.')
+		).toBeVisible();
+	}
+);
+
+test(
+	'A global attribute description can be set and its display name renamed',
+	{tag: '@LRAC-10212'},
+	async ({page, project}) => {
+		const globalAttributeName = 'pageTitle';
+
+		async function openGlobalAttribute() {
+			await navigateToACSettingsViaURL({
+				acPage: ACPage.definitionsEventAttributesGlobalPage,
+				page,
+				projectID: project.groupId,
+			});
+
+			await page
+				.getByRole('link', {exact: true, name: globalAttributeName})
+				.click();
+
+			await page.getByRole('button', {name: 'Edit'}).click();
+		}
+
+		try {
+
+			// The default global attributes are listed
+
+			await navigateToACSettingsViaURL({
+				acPage: ACPage.definitionsEventAttributesGlobalPage,
+				page,
+				projectID: project.groupId,
+			});
+
+			for (const defaultGlobalAttribute of [
+				'canonicalUrl',
+				'pageDescription',
+				'pageKeywords',
+				'pageTitle',
+				'referrer',
+				'url',
+			]) {
+				await expect(
+					page.getByRole('link', {
+						exact: true,
+						name: defaultGlobalAttribute,
+					})
+				).toBeVisible();
+			}
+
+			// A description can be set and it appears in the list
+
+			const description = `${globalAttributeName} Description`;
+
+			await openGlobalAttribute();
+
+			await page.getByLabel('Description').fill(description);
+
+			await saveAttributeEditor(page);
+
+			await navigateToACSettingsViaURL({
+				acPage: ACPage.definitionsEventAttributesGlobalPage,
+				page,
+				projectID: project.groupId,
+			});
+
+			await expect(page.getByText(description)).toBeVisible();
+
+			// The display name can be renamed
+
+			const displayName = `${globalAttributeName} Display Name`;
+
+			await openGlobalAttribute();
+
+			await page.getByLabel('Display Name').fill(displayName);
+
+			await saveAttributeEditor(page);
+
+			await navigateToACSettingsViaURL({
+				acPage: ACPage.definitionsEventAttributesGlobalPage,
+				page,
+				projectID: project.groupId,
+			});
+
+			await expect(page.getByText(displayName)).toBeVisible();
+		}
+		finally {
+
+			// Restore the shared project-level attribute to its defaults
+
+			await openGlobalAttribute();
+
+			await page.getByLabel('Display Name').fill(globalAttributeName);
+
+			await page.getByLabel('Description').fill('');
+
+			await saveAttributeEditor(page);
+		}
+	}
+);
+
+test(
 	'Certain default events are hidden by default',
 	{tag: '@LRAC-10222'},
 	async ({page, project}) => {

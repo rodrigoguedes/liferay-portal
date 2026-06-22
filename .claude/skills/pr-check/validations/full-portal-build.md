@@ -4,6 +4,8 @@
 
 - portal-core changed: `portal-impl/**`, `portal-kernel/**`, `portal-test/**`, `portal-web/**`, `support-tomcat/**`, `util-bridges/**`, `util-java/**`, `util-slf4j/**`, `util-taglib/**`. Mandatory in this case — no Gradle deploy path covers these sources.
 
+	A portal-core change of only `*.properties` files does not fire this validation. `ant all` gives no signal for them, and **Source Format** covers them instead.
+
 - OR the deploy set is large enough that one full build is cheaper than per-module deploys. Compare:
 
 	- **Full Portal Build cost** = 8 min (the `ant all` baseline).
@@ -14,7 +16,7 @@
 
 ## Match
 
-`^(portal-impl|portal-kernel|portal-test|portal-web|support-tomcat|util-bridges|util-java|util-slf4j|util-taglib)/`
+`^(portal-impl|portal-kernel|portal-test|portal-web|support-tomcat|util-bridges|util-java|util-slf4j|util-taglib)/ &! \.properties$`
 
 ## Command
 

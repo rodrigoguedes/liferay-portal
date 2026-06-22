@@ -2,9 +2,49 @@
 
 .lfr__calendar-view {
 	--fc-border-color: #{$border-color};
+	--fc-event-bg-color: transparent;
+	--fc-event-border-color: transparent;
 	--fc-today-bg-color: transparent;
 
 	margin-top: -1rem;
+
+	.fc-daygrid-event {
+		border: 0;
+		box-shadow: none;
+		margin-top: 4px;
+	}
+
+	// Override the global ".fds a" rule that underlines event links
+
+	.fc-daygrid-event:not(.btn):not(.component-action):not(.page-link) {
+		text-decoration: none;
+	}
+
+	.fc-daygrid-block-event .fc-event-main {
+		padding: 0;
+	}
+
+	.fc-daygrid-more-link.fc-more-link {
+		font-size: map-get($font-scale, 2);
+		line-height: 1.5;
+		margin: 4px;
+		padding: 0.125rem 0.5rem;
+
+		&:hover {
+			background-color: rgba($gray-900, 0.06);
+			color: $gray-900;
+		}
+	}
+
+	.fc-direction-ltr .fc-daygrid-event.fc-event-end,
+	.fc-direction-rtl .fc-daygrid-event.fc-event-start {
+		margin-right: 0.25rem;
+	}
+
+	.fc-direction-ltr .fc-daygrid-event.fc-event-start,
+	.fc-direction-rtl .fc-daygrid-event.fc-event-end {
+		margin-left: 0.25rem;
+	}
 
 	&-toolbar {
 		align-items: center;

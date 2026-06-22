@@ -40,9 +40,16 @@ import com.liferay.headless.commerce.admin.catalog.client.pagination.Pagination;
 import com.liferay.headless.commerce.admin.catalog.client.problem.Problem;
 import com.liferay.headless.commerce.admin.catalog.client.resource.v1_0.ProductResource;
 import com.liferay.headless.commerce.core.util.LanguageUtils;
+import com.liferay.object.field.builder.TextObjectFieldBuilder;
+import com.liferay.object.field.util.ObjectFieldUtil;
+import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectField;
+import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.search.Indexer;
 import com.liferay.portal.kernel.search.IndexerRegistryUtil;
@@ -50,6 +57,7 @@ import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.WorkflowDefinitionLinkLocalService;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
+import com.liferay.portal.kernel.test.util.HTTPTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
@@ -58,10 +66,12 @@ import com.liferay.portal.kernel.util.Base64;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.test.rule.Inject;
+import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 
 import java.math.BigDecimal;
 
@@ -341,6 +351,7 @@ public class ProductResourceTest extends BaseProductResourceTestCase {
 		_testPatchProductWithNegativeValue("promo price");
 		_testPatchProductWithNegativeValue("weight");
 		_testPatchProductWithNegativeValue("width");
+		_testPatchProductWithObjectField();
 	}
 
 	@Ignore
@@ -913,6 +924,45 @@ public class ProductResourceTest extends BaseProductResourceTestCase {
 		}
 	}
 
+	private void _testPatchProductWithObjectField() throws Exception {
+		ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.fetchObjectDefinitionByClassName(
+				testCompany.getCompanyId(), CPDefinition.class.getName());
+
+		ObjectField objectField = ObjectFieldUtil.addCustomObjectField(
+			new TextObjectFieldBuilder(
+			).userId(
+				TestPropsValues.getUserId()
+			).labelMap(
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString())
+			).name(
+				"A" + RandomTestUtil.randomString()
+			).objectDefinitionId(
+				objectDefinition.getObjectDefinitionId()
+			).build());
+
+		Product product = productResource.postProduct(randomProduct());
+
+		String value = RandomTestUtil.randomString();
+
+		String endpoint =
+			"headless-commerce-admin-catalog/v1.0/products/" +
+				product.getProductId();
+
+		JSONObject jsonObject = HTTPTestUtil.invokeToJSONObject(
+			JSONUtil.put(
+				objectField.getName(), value
+			).toString(),
+			endpoint, Http.Method.PATCH);
+
+		Assert.assertEquals(value, jsonObject.getString(objectField.getName()));
+
+		jsonObject = HTTPTestUtil.invokeToJSONObject(
+			null, endpoint, Http.Method.GET);
+
+		Assert.assertEquals(value, jsonObject.getString(objectField.getName()));
+	}
+
 	private void _testPostProductProductShippingConfigurationFromProductConfiguration()
 		throws Exception {
 
@@ -1175,6 +1225,9 @@ public class ProductResourceTest extends BaseProductResourceTestCase {
 
 	@DeleteAfterTestRun
 	private CPSpecificationOption _cpSpecificationOption;
+
+	@Inject
+	private ObjectDefinitionLocalService _objectDefinitionLocalService;
 
 	@Inject
 	private UserLocalService _userLocalService;
