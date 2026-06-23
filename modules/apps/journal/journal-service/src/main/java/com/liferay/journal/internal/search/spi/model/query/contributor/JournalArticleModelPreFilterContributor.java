@@ -24,10 +24,12 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.FastDateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.search.asset.AssetSubtypeIdentifier;
 import com.liferay.portal.search.filter.DateRangeFilterBuilder;
 import com.liferay.portal.search.filter.FilterBuilders;
@@ -42,6 +44,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -61,8 +64,23 @@ public class JournalArticleModelPreFilterContributor
 		BooleanFilter booleanFilter, ModelSearchSettings modelSearchSettings,
 		SearchContext searchContext) {
 
-		_workflowStatusModelPreFilterContributor.contribute(
-			booleanFilter, modelSearchSettings, searchContext);
+		// LPD-92301 Preview Framework POC: when a preview swap map is present
+		// for JournalArticle, replace the normal "status=approved AND head"
+		// restriction with a relaxed clause that excludes the approved/live
+		// version (fromClassPK) and includes the specific draft version
+		// (toClassPK), keyed on Field.UID (all versions of a JournalArticle
+		// share entryClassPK = resourcePrimKey, so the per-version UID is the
+		// only safe key).
+
+		Map<Long, Long> previewSwaps = _getPreviewSwaps(searchContext);
+
+		if (MapUtil.isEmpty(previewSwaps)) {
+			_workflowStatusModelPreFilterContributor.contribute(
+				booleanFilter, modelSearchSettings, searchContext);
+		}
+		else {
+			_contributePreviewSwapFilter(booleanFilter, previewSwaps);
+		}
 
 		Long classNameId = (Long)searchContext.getAttribute(
 			Field.CLASS_NAME_ID);
@@ -182,6 +200,17 @@ public class JournalArticleModelPreFilterContributor
 		boolean showNonindexable = GetterUtil.getBoolean(
 			searchContext.getAttribute("showNonindexable"));
 
+		// Preview mode already added the combined status + head clause in
+		// _contributePreviewSwapFilter. Suppress the normal head/latest filter
+		// so the previewed draft (head=false) is not excluded again.
+
+		if (!MapUtil.isEmpty(previewSwaps)) {
+			head = false;
+			headOrShowNonindexable = false;
+			latest = false;
+			showNonindexable = false;
+		}
+
 		if (latest && !relatedClassName && !showNonindexable) {
 			booleanFilter.addRequiredTerm("latest", Boolean.TRUE);
 		}
@@ -234,6 +263,58 @@ public class JournalArticleModelPreFilterContributor
 		dateRangeFilterBuilder.setIncludeUpper(false);
 
 		booleanFilter.add(dateRangeFilterBuilder.build());
+	}
+
+	private void _contributePreviewSwapFilter(
+		BooleanFilter booleanFilter, Map<Long, Long> previewSwaps) {
+
+		TermsFilter fromUIDsTermsFilter = new TermsFilter(Field.UID);
+		TermsFilter toUIDsTermsFilter = new TermsFilter(Field.UID);
+
+		for (Map.Entry<Long, Long> entry : previewSwaps.entrySet()) {
+			fromUIDsTermsFilter.addValue(_getUID(entry.getKey()));
+			toUIDsTermsFilter.addValue(_getUID(entry.getValue()));
+		}
+
+		// Keep all approved/head/live content except the previewed-away
+		// versions...
+
+		BooleanFilter liveBooleanFilter = new BooleanFilter();
+
+		liveBooleanFilter.addRequiredTerm(
+			Field.STATUS, WorkflowConstants.STATUS_APPROVED);
+		liveBooleanFilter.addRequiredTerm("head", Boolean.TRUE);
+		liveBooleanFilter.add(fromUIDsTermsFilter, BooleanClauseOccur.MUST_NOT);
+
+		// ...OR include the specific draft versions being previewed.
+
+		BooleanFilter previewBooleanFilter = new BooleanFilter();
+
+		previewBooleanFilter.add(liveBooleanFilter, BooleanClauseOccur.SHOULD);
+		previewBooleanFilter.add(toUIDsTermsFilter, BooleanClauseOccur.SHOULD);
+
+		booleanFilter.add(previewBooleanFilter, BooleanClauseOccur.MUST);
+	}
+
+	private Map<Long, Long> _getPreviewSwaps(SearchContext searchContext) {
+		Object attribute = searchContext.getAttribute("preview.swap.map");
+
+		if (!(attribute instanceof Map)) {
+			return null;
+		}
+
+		Map<String, Map<Long, Long>> previewSwapMap =
+			(Map<String, Map<Long, Long>>)attribute;
+
+		return previewSwapMap.get(JournalArticle.class.getName());
+	}
+
+	private String _getUID(long classPK) {
+
+		// Mirrors UIDFactoryImpl production UID format
+		// (modelClassName + "_PORTLET_" + primaryKey).
+
+		return JournalArticle.class.getName() + "_PORTLET_" + classPK;
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
