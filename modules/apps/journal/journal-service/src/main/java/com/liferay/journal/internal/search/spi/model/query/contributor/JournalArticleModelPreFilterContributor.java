@@ -30,6 +30,7 @@ import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.portal.preview.PreviewableResolverUtil;
 import com.liferay.portal.search.asset.AssetSubtypeIdentifier;
 import com.liferay.portal.search.filter.DateRangeFilterBuilder;
 import com.liferay.portal.search.filter.FilterBuilders;
@@ -70,9 +71,12 @@ public class JournalArticleModelPreFilterContributor
 		// version (fromClassPK) and includes the specific draft version
 		// (toClassPK), keyed on Field.UID (all versions of a JournalArticle
 		// share entryClassPK = resourcePrimKey, so the per-version UID is the
-		// only safe key).
+		// only safe key). The swap map comes from the preview context on the
+		// current thread (PreviewableResolverUtil), the same source the
+		// service-layer PreviewableAdvice reads.
 
-		Map<Long, Long> previewSwaps = _getPreviewSwaps(searchContext);
+		Map<Serializable, Serializable> previewSwaps =
+			PreviewableResolverUtil.getPreviewableMap(JournalArticle.class);
 
 		if (MapUtil.isEmpty(previewSwaps)) {
 			_workflowStatusModelPreFilterContributor.contribute(
@@ -266,12 +270,15 @@ public class JournalArticleModelPreFilterContributor
 	}
 
 	private void _contributePreviewSwapFilter(
-		BooleanFilter booleanFilter, Map<Long, Long> previewSwaps) {
+		BooleanFilter booleanFilter,
+		Map<Serializable, Serializable> previewSwaps) {
 
 		TermsFilter fromUIDsTermsFilter = new TermsFilter(Field.UID);
 		TermsFilter toUIDsTermsFilter = new TermsFilter(Field.UID);
 
-		for (Map.Entry<Long, Long> entry : previewSwaps.entrySet()) {
+		for (Map.Entry<Serializable, Serializable> entry :
+				previewSwaps.entrySet()) {
+
 			fromUIDsTermsFilter.addValue(_getUID(entry.getKey()));
 			toUIDsTermsFilter.addValue(_getUID(entry.getValue()));
 		}
@@ -296,20 +303,7 @@ public class JournalArticleModelPreFilterContributor
 		booleanFilter.add(previewBooleanFilter, BooleanClauseOccur.MUST);
 	}
 
-	private Map<Long, Long> _getPreviewSwaps(SearchContext searchContext) {
-		Object attribute = searchContext.getAttribute("preview.swap.map");
-
-		if (!(attribute instanceof Map)) {
-			return null;
-		}
-
-		Map<String, Map<Long, Long>> previewSwapMap =
-			(Map<String, Map<Long, Long>>)attribute;
-
-		return previewSwapMap.get(JournalArticle.class.getName());
-	}
-
-	private String _getUID(long classPK) {
+	private String _getUID(Serializable classPK) {
 
 		// Mirrors UIDFactoryImpl production UID format
 		// (modelClassName + "_PORTLET_" + primaryKey).

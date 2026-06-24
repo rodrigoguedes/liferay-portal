@@ -10,6 +10,7 @@ import com.liferay.dynamic.data.mapping.test.util.DDMStructureTestUtil;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.model.JournalFolder;
 import com.liferay.journal.test.util.JournalTestUtil;
+import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.portlet.PortalPreferences;
 import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
@@ -28,6 +29,7 @@ import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.PortletKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.portal.preview.PreviewableResolverUtil;
 import com.liferay.portal.search.aggregation.AggregationResult;
 import com.liferay.portal.search.aggregation.Aggregations;
 import com.liferay.portal.search.aggregation.bucket.Bucket;
@@ -49,6 +51,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -73,13 +76,14 @@ import org.junit.runner.RunWith;
  * {@code SearchRequest} API (the path headless and newer code use), to match
  * the LPD-95367 POC. The swap itself lives in production code
  * ({@code JournalArticleModelPreFilterContributor}, made preview-aware): the
- * test only sets the {@link SearchContext} attribute
- * {@value #_PREVIEW_SWAP_MAP_ATTRIBUTE_NAME}
- * ({@code Map<entryClassName, Map<fromClassPK, toClassPK>>}, PKs are the
- * per-version {@link JournalArticle#getId()}). No {@code postFilter} and no
- * manual {@code head=false}/{@code status=ANY} relaxation here — the contributor
- * does that, which keeps the swap in the filter context so aggregations honor
- * it (scenario 6).
+ * test only registers a preview swap map ({@code Map<fromClassPK, toClassPK>},
+ * PKs are the per-version {@link JournalArticle#getId()}) with
+ * {@link PreviewableResolverUtil} and sets the preview id on the current thread
+ * for the duration of the search — the same context the service-layer
+ * {@code PreviewableAdvice} reads. No {@code postFilter} and no manual
+ * {@code head=false}/{@code status=ANY} relaxation here — the contributor does
+ * that, which keeps the swap in the filter context so aggregations honor it
+ * (scenario 6).
  * </p>
  *
  * <p>
@@ -155,13 +159,13 @@ public class JournalArticlePreviewSearchTest {
 		Article article = _addArticleWithDraft("alpaca", "zebra");
 		Article unmapped = _addArticleWithDraft("cobra", "ocelot");
 
-		Serializable previewSwapMap = _previewSwapMap(
-			_swaps(article.approved, article.draft));
+		Map<Serializable, Serializable> journalSwaps = _swaps(
+			article.approved, article.draft);
 
-		_assertUIDs(_search("zebra", previewSwapMap), article.draft);
-		_assertUIDs(_search("alpaca", previewSwapMap));
+		_assertUIDs(_search("zebra", journalSwaps), article.draft);
+		_assertUIDs(_search("alpaca", journalSwaps));
 		_assertUIDs(
-			_search(null, previewSwapMap), article.draft, unmapped.approved);
+			_search(null, journalSwaps), article.draft, unmapped.approved);
 	}
 
 	/**
@@ -174,16 +178,15 @@ public class JournalArticlePreviewSearchTest {
 		Article article2 = _addArticleWithDraft("beaver", "yak");
 		Article unmapped = _addArticleWithDraft("cobra", "ocelot");
 
-		HashMap<Long, Long> swaps = _swaps(article1.approved, article1.draft);
+		Map<Serializable, Serializable> journalSwaps = _swaps(
+			article1.approved, article1.draft);
 
-		swaps.putAll(_swaps(article2.approved, article2.draft));
+		journalSwaps.putAll(_swaps(article2.approved, article2.draft));
 
-		Serializable previewSwapMap = _previewSwapMap(swaps);
-
-		_assertUIDs(_search("zebra", previewSwapMap), article1.draft);
-		_assertUIDs(_search("yak", previewSwapMap), article2.draft);
+		_assertUIDs(_search("zebra", journalSwaps), article1.draft);
+		_assertUIDs(_search("yak", journalSwaps), article2.draft);
 		_assertUIDs(
-			_search(null, previewSwapMap), article1.draft, article2.draft,
+			_search(null, journalSwaps), article1.draft, article2.draft,
 			unmapped.approved);
 	}
 
@@ -192,10 +195,10 @@ public class JournalArticlePreviewSearchTest {
 	 * swap lives in the model pre-filter contributor, which this test now
 	 * exercises through the same modern {@link Searcher} API that the headless
 	 * backend uses, so the swap applies once the headless resource layer
-	 * propagates the preview signal into the {@code SearchContext}
-	 * ({@value #_PREVIEW_SWAP_MAP_ATTRIBUTE_NAME}). That propagation
-	 * (header/param/thread-local -> attribute) plus driving the HTTP stack is
-	 * product wiring, exactly the Confluence "Concern".
+	 * propagates the preview context onto the request thread (the preview id
+	 * read by {@link PreviewableResolverUtil}). Carrying that signal across the
+	 * fresh HTTP request thread plus driving the HTTP stack is product wiring,
+	 * exactly the Confluence "Concern".
 	 */
 	@Ignore
 	@Test
@@ -242,11 +245,11 @@ public class JournalArticlePreviewSearchTest {
 			baselineAggregation.getOrDefault(
 				String.valueOf(WorkflowConstants.STATUS_DRAFT), 0L));
 
-		Serializable previewSwapMap = _previewSwapMap(
-			_swaps(article.approved, article.draft));
+		Map<Serializable, Serializable> journalSwaps = _swaps(
+			article.approved, article.draft);
 
 		HashMap<String, Long> previewAggregation = _statusAggregation(
-			previewSwapMap);
+			journalSwaps);
 
 		Assert.assertEquals(
 			"Preview: the previewed entry contributes its draft status",
@@ -264,15 +267,15 @@ public class JournalArticlePreviewSearchTest {
 	/**
 	 * Scenario 7 - Concurrent previews are isolated. Two threads search the
 	 * same entry simultaneously, one with a preview swap map and one without.
-	 * The contributor reads the per-call {@code SearchContext} (no thread-local
-	 * or shared mutable state), so neither thread leaks into the other.
+	 * The preview id lives in a per-thread {@code ThreadLocal}, so each thread
+	 * sees only its own preview context and neither leaks into the other.
 	 */
 	@Test
 	public void testScenario7ConcurrentPreviewsAreIsolated() throws Exception {
 		Article article = _addArticleWithDraft("alpaca", "zebra");
 
-		Serializable previewSwapMap = _previewSwapMap(
-			_swaps(article.approved, article.draft));
+		Map<Serializable, Serializable> journalSwaps = _swaps(
+			article.approved, article.draft);
 
 		String draftUID = _uidFactory.getUID(article.draft);
 		long companyId = TestPropsValues.getCompanyId();
@@ -290,7 +293,7 @@ public class JournalArticlePreviewSearchTest {
 
 		Thread previewerThread = new Thread(
 			() -> _runConcurrentSearch(
-				companyId, groupId, "zebra", previewSwapMap, iterations,
+				companyId, groupId, "zebra", journalSwaps, iterations,
 				cyclicBarrier, throwables,
 				searchResponse -> {
 					if (_containsUID(searchResponse, draftUID)) {
@@ -338,19 +341,17 @@ public class JournalArticlePreviewSearchTest {
 		Article article2 = _addArticleWithDraft(
 			_group2.getGroupId(), _folder2.getFolderId(), "beaver", "yak");
 
-		HashMap<Long, Long> swaps = _swaps(article1.approved, article1.draft);
+		Map<Serializable, Serializable> journalSwaps = _swaps(
+			article1.approved, article1.draft);
 
-		swaps.putAll(_swaps(article2.approved, article2.draft));
-
-		Serializable previewSwapMap = _previewSwapMap(swaps);
+		journalSwaps.putAll(_swaps(article2.approved, article2.draft));
 
 		long[] groupIds = {_group.getGroupId(), _group2.getGroupId()};
 
-		_assertUIDs(
-			_search(groupIds, "zebra", previewSwapMap), article1.draft);
-		_assertUIDs(_search(groupIds, "yak", previewSwapMap), article2.draft);
+		_assertUIDs(_search(groupIds, "zebra", journalSwaps), article1.draft);
+		_assertUIDs(_search(groupIds, "yak", journalSwaps), article2.draft);
 
-		SearchResponse searchResponse = _search(groupIds, null, previewSwapMap);
+		SearchResponse searchResponse = _search(groupIds, null, journalSwaps);
 
 		Assert.assertTrue(
 			"Group 1 draft present",
@@ -367,18 +368,18 @@ public class JournalArticlePreviewSearchTest {
 	}
 
 	/**
-	 * Scenario 9 - Preview context cleared. After a preview search, a
-	 * subsequent search that does not carry the preview attribute returns live
-	 * versions only. There is no thread-local to leak.
+	 * Scenario 9 - Preview context cleared. The preview id is set only for the
+	 * duration of each preview search and cleared when it completes, so a
+	 * subsequent search with no preview context returns live versions only.
 	 */
 	@Test
 	public void testScenario9PreviewContextCleared() throws Exception {
 		Article article = _addArticleWithDraft("alpaca", "zebra");
 
-		Serializable previewSwapMap = _previewSwapMap(
-			_swaps(article.approved, article.draft));
+		Map<Serializable, Serializable> journalSwaps = _swaps(
+			article.approved, article.draft);
 
-		_assertUIDs(_search("zebra", previewSwapMap), article.draft);
+		_assertUIDs(_search("zebra", journalSwaps), article.draft);
 
 		_assertUIDs(_search("zebra", null));
 		_assertUIDs(_search("alpaca", null), article.approved);
@@ -445,18 +446,11 @@ public class JournalArticlePreviewSearchTest {
 		return false;
 	}
 
-	private Serializable _previewSwapMap(HashMap<Long, Long> journalSwaps) {
-		HashMap<String, Serializable> previewSwapMap = new HashMap<>();
-
-		previewSwapMap.put(JournalArticle.class.getName(), journalSwaps);
-
-		return previewSwapMap;
-	}
-
 	private void _runConcurrentSearch(
 		long companyId, long groupId, String keywords,
-		Serializable previewSwapMap, int iterations, CyclicBarrier cyclicBarrier,
-		List<Throwable> throwables, Consumer<SearchResponse> searchResponseConsumer) {
+		Map<Serializable, Serializable> journalSwaps, int iterations,
+		CyclicBarrier cyclicBarrier, List<Throwable> throwables,
+		Consumer<SearchResponse> searchResponseConsumer) {
 
 		try {
 			CompanyThreadLocal.setCompanyId(companyId);
@@ -465,7 +459,7 @@ public class JournalArticlePreviewSearchTest {
 
 			for (int i = 0; i < iterations; i++) {
 				searchResponseConsumer.accept(
-					_search(new long[] {groupId}, keywords, previewSwapMap));
+					_search(new long[] {groupId}, keywords, journalSwaps));
 			}
 		}
 		catch (Throwable throwable) {
@@ -473,15 +467,9 @@ public class JournalArticlePreviewSearchTest {
 		}
 	}
 
-	private SearchResponse _search(String keywords, Serializable previewSwapMap)
-		throws Exception {
-
-		return _search(
-			new long[] {_group.getGroupId()}, keywords, previewSwapMap);
-	}
-
 	private SearchResponse _search(
-			long[] groupIds, String keywords, Serializable previewSwapMap)
+			long[] groupIds, String keywords,
+			Map<Serializable, Serializable> journalSwaps)
 		throws Exception {
 
 		SearchContext searchContext = SearchContextTestUtil.getSearchContext(
@@ -494,11 +482,6 @@ public class JournalArticlePreviewSearchTest {
 			searchContext.setKeywords(keywords);
 		}
 
-		if (previewSwapMap != null) {
-			searchContext.setAttribute(
-				_PREVIEW_SWAP_MAP_ATTRIBUTE_NAME, previewSwapMap);
-		}
-
 		SearchRequestBuilder searchRequestBuilder =
 			_searchRequestBuilderFactory.builder(
 				searchContext
@@ -508,11 +491,42 @@ public class JournalArticlePreviewSearchTest {
 				JournalArticle.class
 			);
 
-		return _searcher.search(searchRequestBuilder.build());
+		return _searchWithPreviewContext(searchRequestBuilder, journalSwaps);
+	}
+
+	private SearchResponse _search(
+			String keywords, Map<Serializable, Serializable> journalSwaps)
+		throws Exception {
+
+		return _search(
+			new long[] {_group.getGroupId()}, keywords, journalSwaps);
+	}
+
+	private SearchResponse _searchWithPreviewContext(
+			SearchRequestBuilder searchRequestBuilder,
+			Map<Serializable, Serializable> journalSwaps)
+		throws Exception {
+
+		if (journalSwaps == null) {
+			return _searcher.search(searchRequestBuilder.build());
+		}
+
+		Long previewId = PreviewableResolverUtil.addPreviewableMap(
+			Collections.singletonMap(JournalArticle.class, journalSwaps));
+
+		try (SafeCloseable safeCloseable =
+				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
+					previewId)) {
+
+			return _searcher.search(searchRequestBuilder.build());
+		}
+		finally {
+			PreviewableResolverUtil.removePreviewableMap(previewId);
+		}
 	}
 
 	private HashMap<String, Long> _statusAggregation(
-			Serializable previewSwapMap)
+			Map<Serializable, Serializable> journalSwaps)
 		throws Exception {
 
 		SearchContext searchContext = SearchContextTestUtil.getSearchContext(
@@ -520,11 +534,6 @@ public class JournalArticlePreviewSearchTest {
 
 		searchContext.setGroupIds(new long[] {_group.getGroupId()});
 		searchContext.setUserId(0);
-
-		if (previewSwapMap != null) {
-			searchContext.setAttribute(
-				_PREVIEW_SWAP_MAP_ATTRIBUTE_NAME, previewSwapMap);
-		}
 
 		SearchRequestBuilder searchRequestBuilder =
 			_searchRequestBuilderFactory.builder(
@@ -537,8 +546,8 @@ public class JournalArticlePreviewSearchTest {
 				_aggregations.terms("statusAggregation", Field.STATUS)
 			);
 
-		SearchResponse searchResponse = _searcher.search(
-			searchRequestBuilder.build());
+		SearchResponse searchResponse = _searchWithPreviewContext(
+			searchRequestBuilder, journalSwaps);
 
 		HashMap<String, Long> termFrequencies = new HashMap<>();
 
@@ -557,10 +566,10 @@ public class JournalArticlePreviewSearchTest {
 		return termFrequencies;
 	}
 
-	private HashMap<Long, Long> _swaps(
+	private Map<Serializable, Serializable> _swaps(
 		JournalArticle fromArticle, JournalArticle toArticle) {
 
-		HashMap<Long, Long> swaps = new HashMap<>();
+		Map<Serializable, Serializable> swaps = new HashMap<>();
 
 		swaps.put(fromArticle.getId(), toArticle.getId());
 
@@ -576,9 +585,6 @@ public class JournalArticlePreviewSearchTest {
 
 		return uids;
 	}
-
-	private static final String _PREVIEW_SWAP_MAP_ATTRIBUTE_NAME =
-		"preview.swap.map";
 
 	@Inject
 	private Aggregations _aggregations;
