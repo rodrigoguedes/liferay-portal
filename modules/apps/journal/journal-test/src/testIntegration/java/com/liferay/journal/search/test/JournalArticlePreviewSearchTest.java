@@ -1,5 +1,5 @@
 /**
- * SPDX-FileCopyrightText: (c) 2000 Liferay, Inc. https://liferay.com
+ * SPDX-FileCopyrightText: (c) 2026 Liferay, Inc. https://liferay.com
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
@@ -103,7 +103,7 @@ public class JournalArticlePreviewSearchTest {
 
 	@Before
 	public void setUp() throws Exception {
-		_group = GroupTestUtil.addGroup();
+		_group1 = GroupTestUtil.addGroup();
 		_group2 = GroupTestUtil.addGroup();
 
 		UserTestUtil.setUser(TestPropsValues.getUser());
@@ -118,14 +118,16 @@ public class JournalArticlePreviewSearchTest {
 		_originalPortalPreferencesXML = PortletPreferencesFactoryUtil.toXML(
 			portalPreferences);
 
-		portalPreferences.setValue("", "indexAllArticleVersionsEnabled", "true");
+		portalPreferences.setValue(
+			"", "indexAllArticleVersionsEnabled", "true");
 
 		PortalPreferencesLocalServiceUtil.updatePreferences(
-			TestPropsValues.getCompanyId(), PortletKeys.PREFS_OWNER_TYPE_COMPANY,
+			TestPropsValues.getCompanyId(),
+			PortletKeys.PREFS_OWNER_TYPE_COMPANY,
 			PortletPreferencesFactoryUtil.toXML(portalPreferences));
 
-		_folder = JournalTestUtil.addFolder(
-			_group.getGroupId(), RandomTestUtil.randomString());
+		_folder1 = JournalTestUtil.addFolder(
+			_group1.getGroupId(), RandomTestUtil.randomString());
 		_folder2 = JournalTestUtil.addFolder(
 			_group2.getGroupId(), RandomTestUtil.randomString());
 	}
@@ -133,7 +135,8 @@ public class JournalArticlePreviewSearchTest {
 	@After
 	public void tearDown() throws Exception {
 		PortalPreferencesLocalServiceUtil.updatePreferences(
-			TestPropsValues.getCompanyId(), PortletKeys.PREFS_OWNER_TYPE_COMPANY,
+			TestPropsValues.getCompanyId(),
+			PortletKeys.PREFS_OWNER_TYPE_COMPANY,
 			_originalPortalPreferencesXML);
 	}
 
@@ -145,7 +148,8 @@ public class JournalArticlePreviewSearchTest {
 	public void testScenario1BaselineNoPreviewContext() throws Exception {
 		Article article = _addArticleWithDraft("alpaca", "zebra");
 
-		_assertUIDs(_search("alpaca", null), article.approved);
+		_assertUIDs(_search("alpaca", null), article._approved);
+
 		_assertUIDs(_search("zebra", null));
 	}
 
@@ -159,13 +163,13 @@ public class JournalArticlePreviewSearchTest {
 		Article article = _addArticleWithDraft("alpaca", "zebra");
 		Article unmapped = _addArticleWithDraft("cobra", "ocelot");
 
-		Map<Serializable, Serializable> journalSwaps = _swaps(
-			article.approved, article.draft);
+		Map<Serializable, Serializable> journalSwaps = Map.of(
+			article._approved.getId(), article._draft.getId());
 
-		_assertUIDs(_search("zebra", journalSwaps), article.draft);
+		_assertUIDs(_search("zebra", journalSwaps), article._draft);
 		_assertUIDs(_search("alpaca", journalSwaps));
 		_assertUIDs(
-			_search(null, journalSwaps), article.draft, unmapped.approved);
+			_search(null, journalSwaps), article._draft, unmapped._approved);
 	}
 
 	/**
@@ -178,16 +182,15 @@ public class JournalArticlePreviewSearchTest {
 		Article article2 = _addArticleWithDraft("beaver", "yak");
 		Article unmapped = _addArticleWithDraft("cobra", "ocelot");
 
-		Map<Serializable, Serializable> journalSwaps = _swaps(
-			article1.approved, article1.draft);
+		Map<Serializable, Serializable> journalSwaps = Map.of(
+			article1._approved.getId(), article1._draft.getId(),
+			article2._approved.getId(), article2._draft.getId());
 
-		journalSwaps.putAll(_swaps(article2.approved, article2.draft));
-
-		_assertUIDs(_search("zebra", journalSwaps), article1.draft);
-		_assertUIDs(_search("yak", journalSwaps), article2.draft);
+		_assertUIDs(_search("zebra", journalSwaps), article1._draft);
+		_assertUIDs(_search("yak", journalSwaps), article2._draft);
 		_assertUIDs(
-			_search(null, journalSwaps), article1.draft, article2.draft,
-			unmapped.approved);
+			_search(null, journalSwaps), article1._draft, article2._draft,
+			unmapped._approved);
 	}
 
 	/**
@@ -245,8 +248,8 @@ public class JournalArticlePreviewSearchTest {
 			baselineAggregation.getOrDefault(
 				String.valueOf(WorkflowConstants.STATUS_DRAFT), 0L));
 
-		Map<Serializable, Serializable> journalSwaps = _swaps(
-			article.approved, article.draft);
+		Map<Serializable, Serializable> journalSwaps = Map.of(
+			article._approved.getId(), article._draft.getId());
 
 		HashMap<String, Long> previewAggregation = _statusAggregation(
 			journalSwaps);
@@ -257,7 +260,8 @@ public class JournalArticlePreviewSearchTest {
 			previewAggregation.getOrDefault(
 				String.valueOf(WorkflowConstants.STATUS_DRAFT), 0L));
 		Assert.assertEquals(
-			"Preview: only the unmapped entry remains approved", Long.valueOf(1),
+			"Preview: only the unmapped entry remains approved",
+			Long.valueOf(1),
 			previewAggregation.getOrDefault(
 				String.valueOf(WorkflowConstants.STATUS_APPROVED), 0L));
 
@@ -274,12 +278,13 @@ public class JournalArticlePreviewSearchTest {
 	public void testScenario7ConcurrentPreviewsAreIsolated() throws Exception {
 		Article article = _addArticleWithDraft("alpaca", "zebra");
 
-		Map<Serializable, Serializable> journalSwaps = _swaps(
-			article.approved, article.draft);
+		Map<Serializable, Serializable> journalSwaps = Map.of(
+			article._approved.getId(), article._draft.getId());
 
-		String draftUID = _uidFactory.getUID(article.draft);
+		String draftUID = _uidFactory.getUID(article._draft);
+
 		long companyId = TestPropsValues.getCompanyId();
-		long groupId = _group.getGroupId();
+		long groupId = _group1.getGroupId();
 
 		int iterations = 25;
 
@@ -341,30 +346,31 @@ public class JournalArticlePreviewSearchTest {
 		Article article2 = _addArticleWithDraft(
 			_group2.getGroupId(), _folder2.getFolderId(), "beaver", "yak");
 
-		Map<Serializable, Serializable> journalSwaps = _swaps(
-			article1.approved, article1.draft);
+		Map<Serializable, Serializable> journalSwaps = Map.of(
+			article1._approved.getId(), article1._draft.getId(),
+			article2._approved.getId(), article2._draft.getId());
 
-		journalSwaps.putAll(_swaps(article2.approved, article2.draft));
+		long[] groupIds = {_group1.getGroupId(), _group2.getGroupId()};
 
-		long[] groupIds = {_group.getGroupId(), _group2.getGroupId()};
-
-		_assertUIDs(_search(groupIds, "zebra", journalSwaps), article1.draft);
-		_assertUIDs(_search(groupIds, "yak", journalSwaps), article2.draft);
+		_assertUIDs(_search(groupIds, "zebra", journalSwaps), article1._draft);
+		_assertUIDs(_search(groupIds, "yak", journalSwaps), article2._draft);
 
 		SearchResponse searchResponse = _search(groupIds, null, journalSwaps);
 
 		Assert.assertTrue(
 			"Group 1 draft present",
-			_containsUID(searchResponse, _uidFactory.getUID(article1.draft)));
+			_containsUID(searchResponse, _uidFactory.getUID(article1._draft)));
 		Assert.assertTrue(
 			"Group 2 draft present",
-			_containsUID(searchResponse, _uidFactory.getUID(article2.draft)));
+			_containsUID(searchResponse, _uidFactory.getUID(article2._draft)));
 		Assert.assertFalse(
 			"Group 1 approved excluded",
-			_containsUID(searchResponse, _uidFactory.getUID(article1.approved)));
+			_containsUID(
+				searchResponse, _uidFactory.getUID(article1._approved)));
 		Assert.assertFalse(
 			"Group 2 approved excluded",
-			_containsUID(searchResponse, _uidFactory.getUID(article2.approved)));
+			_containsUID(
+				searchResponse, _uidFactory.getUID(article2._approved)));
 	}
 
 	/**
@@ -376,26 +382,17 @@ public class JournalArticlePreviewSearchTest {
 	public void testScenario9PreviewContextCleared() throws Exception {
 		Article article = _addArticleWithDraft("alpaca", "zebra");
 
-		Map<Serializable, Serializable> journalSwaps = _swaps(
-			article.approved, article.draft);
+		Map<Serializable, Serializable> journalSwaps = Map.of(
+			article._approved.getId(), article._draft.getId());
 
-		_assertUIDs(_search("zebra", journalSwaps), article.draft);
+		_assertUIDs(_search("zebra", journalSwaps), article._draft);
 
 		_assertUIDs(_search("zebra", null));
-		_assertUIDs(_search("alpaca", null), article.approved);
+		_assertUIDs(_search("alpaca", null), article._approved);
 	}
 
 	@Rule
 	public SearchTestRule searchTestRule = new SearchTestRule();
-
-	private Article _addArticleWithDraft(
-			String approvedKeyword, String draftKeyword)
-		throws Exception {
-
-		return _addArticleWithDraft(
-			_group.getGroupId(), _folder.getFolderId(), approvedKeyword,
-			draftKeyword);
-	}
 
 	private Article _addArticleWithDraft(
 			long groupId, long folderId, String approvedKeyword,
@@ -412,14 +409,23 @@ public class JournalArticlePreviewSearchTest {
 
 		JournalArticle draft = JournalTestUtil.updateArticle(
 			approved, approved.getTitleMap(),
-			DDMStructureTestUtil.getSampleStructuredContent(draftKeyword), false,
-			true, serviceContext);
+			DDMStructureTestUtil.getSampleStructuredContent(draftKeyword),
+			false, true, serviceContext);
 
 		Assert.assertNotEquals(
 			"Approved and draft must be distinct version rows",
 			(Long)approved.getId(), (Long)draft.getId());
 
 		return new Article(approved, draft);
+	}
+
+	private Article _addArticleWithDraft(
+			String approvedKeyword, String draftKeyword)
+		throws Exception {
+
+		return _addArticleWithDraft(
+			_group1.getGroupId(), _folder1.getFolderId(), approvedKeyword,
+			draftKeyword);
 	}
 
 	private void _assertUIDs(
@@ -499,7 +505,7 @@ public class JournalArticlePreviewSearchTest {
 		throws Exception {
 
 		return _search(
-			new long[] {_group.getGroupId()}, keywords, journalSwaps);
+			new long[] {_group1.getGroupId()}, keywords, journalSwaps);
 	}
 
 	private SearchResponse _searchWithPreviewContext(
@@ -512,7 +518,7 @@ public class JournalArticlePreviewSearchTest {
 		}
 
 		Long previewId = PreviewableResolverUtil.addPreviewableMap(
-			Collections.singletonMap(JournalArticle.class, journalSwaps));
+			Map.of(JournalArticle.class, journalSwaps));
 
 		try (SafeCloseable safeCloseable =
 				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
@@ -530,9 +536,9 @@ public class JournalArticlePreviewSearchTest {
 		throws Exception {
 
 		SearchContext searchContext = SearchContextTestUtil.getSearchContext(
-			_group.getGroupId());
+			_group1.getGroupId());
 
-		searchContext.setGroupIds(new long[] {_group.getGroupId()});
+		searchContext.setGroupIds(new long[] {_group1.getGroupId()});
 		searchContext.setUserId(0);
 
 		SearchRequestBuilder searchRequestBuilder =
@@ -566,16 +572,6 @@ public class JournalArticlePreviewSearchTest {
 		return termFrequencies;
 	}
 
-	private Map<Serializable, Serializable> _swaps(
-		JournalArticle fromArticle, JournalArticle toArticle) {
-
-		Map<Serializable, Serializable> swaps = new HashMap<>();
-
-		swaps.put(fromArticle.getId(), toArticle.getId());
-
-		return swaps;
-	}
-
 	private List<String> _uids(SearchResponse searchResponse) {
 		List<String> uids = new ArrayList<>();
 
@@ -590,13 +586,13 @@ public class JournalArticlePreviewSearchTest {
 	private Aggregations _aggregations;
 
 	@DeleteAfterTestRun
-	private JournalFolder _folder;
+	private JournalFolder _folder1;
 
 	@DeleteAfterTestRun
 	private JournalFolder _folder2;
 
 	@DeleteAfterTestRun
-	private Group _group;
+	private Group _group1;
 
 	@DeleteAfterTestRun
 	private Group _group2;
@@ -615,12 +611,12 @@ public class JournalArticlePreviewSearchTest {
 	private static class Article {
 
 		private Article(JournalArticle approved, JournalArticle draft) {
-			this.approved = approved;
-			this.draft = draft;
+			_approved = approved;
+			_draft = draft;
 		}
 
-		private final JournalArticle approved;
-		private final JournalArticle draft;
+		private final JournalArticle _approved;
+		private final JournalArticle _draft;
 
 	}
 

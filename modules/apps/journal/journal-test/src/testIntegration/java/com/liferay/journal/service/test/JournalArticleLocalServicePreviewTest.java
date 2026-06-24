@@ -191,7 +191,8 @@ public class JournalArticleLocalServicePreviewTest {
 			Map.of(
 				JournalArticle.class,
 				Map.of(
-					_journalArticle1.getId(), -1L, _journalArticle2.getId(), -2L)));
+					_journalArticle1.getId(), -1L, _journalArticle2.getId(),
+					-2L)));
 
 		try (SafeCloseable safeCloseable =
 				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
@@ -417,7 +418,8 @@ public class JournalArticleLocalServicePreviewTest {
 		// Preview with missing target
 
 		Long previewId5 = PreviewableResolverUtil.addPreviewableMap(
-			Map.of(JournalArticle.class, Map.of(_journalArticle1.getId(), -1L)));
+			Map.of(
+				JournalArticle.class, Map.of(_journalArticle1.getId(), -1L)));
 
 		try (SafeCloseable safeCloseable =
 				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
@@ -463,7 +465,8 @@ public class JournalArticleLocalServicePreviewTest {
 			Long previewId = PreviewableResolverUtil.addPreviewableMap(
 				Map.of(
 					JournalArticle.class,
-					Map.of(_journalArticle1.getId(), _journalArticle3.getId())));
+					Map.of(
+						_journalArticle1.getId(), _journalArticle3.getId())));
 
 			try (SafeCloseable safeCloseable =
 					PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
@@ -499,12 +502,12 @@ public class JournalArticleLocalServicePreviewTest {
 	private static JournalFolderLocalService _journalFolderLocalService;
 
 	private Group _group;
-	private JournalFolder _journalFolder;
-	private final JournalFolderFixture _journalFolderFixture =
-		new JournalFolderFixture(_journalFolderLocalService);
 	private JournalArticle _journalArticle1;
 	private JournalArticle _journalArticle2;
 	private JournalArticle _journalArticle3;
 	private JournalArticle _journalArticle4;
+	private JournalFolder _journalFolder;
+	private final JournalFolderFixture _journalFolderFixture =
+		new JournalFolderFixture(_journalFolderLocalService);
 
 }
