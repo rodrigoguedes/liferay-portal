@@ -40,6 +40,29 @@ public class PreviewableResolverUtil {
 		return previewId;
 	}
 
+	public static Map<Serializable, Serializable> getPreviewableMap(
+		Class<?> modelClass) {
+
+		Long previewId = _previewId.get();
+
+		if (previewId == null) {
+			return null;
+		}
+
+		Map<Class<?>, Map<Serializable, Serializable>> previewableMap =
+			_previewableMaps.get(previewId);
+
+		if (previewableMap == null) {
+			return null;
+		}
+
+		return previewableMap.get(modelClass);
+	}
+
+	public static Long getPreviewId() {
+		return _previewId.get();
+	}
+
 	public static Set<Long> getPreviewIds() {
 		return _previewableMaps.keySet();
 	}
