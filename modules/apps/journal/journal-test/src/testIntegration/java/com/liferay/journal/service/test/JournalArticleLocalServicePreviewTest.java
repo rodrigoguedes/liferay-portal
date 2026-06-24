@@ -189,7 +189,8 @@ public class JournalArticleLocalServicePreviewTest {
 			Map.of(
 				JournalArticle.class,
 				Map.of(
-					_journArticle1.getId(), -1L, _journArticle2.getId(), -2L)));
+					_journalArticle1.getId(), -1L, _journalArticle2.getId(),
+					-2L)));
 
 		try (SafeCloseable safeCloseable =
 				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
@@ -412,7 +413,8 @@ public class JournalArticleLocalServicePreviewTest {
 		// Preview with missing target
 
 		Long previewId5 = PreviewableResolverUtil.addPreviewableMap(
-			Map.of(JournalArticle.class, Map.of(_journArticle1.getId(), -1L)));
+			Map.of(
+				JournalArticle.class, Map.of(_journalArticle1.getId(), -1L)));
 
 		try (SafeCloseable safeCloseable =
 				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
@@ -435,6 +437,55 @@ public class JournalArticleLocalServicePreviewTest {
 
 		PreviewableResolverUtil.removePreviewableMap(previewId4);
 		PreviewableResolverUtil.removePreviewableMap(previewId4);
+		PreviewableResolverUtil.removePreviewableMap(previewId5);
+	}
+
+	@Test
+	public void testThreadLocalCacheHonorsPreviewSwap() throws Exception {
+		ThreadLocalCacheManager.clearAll(Lifecycle.ETERNAL);
+
+		try {
+
+			// Cache the live version outside the preview.
+
+			Assert.assertEquals(
+				_journalArticle1,
+				_journalArticleLocalService.getArticle(
+					_group.getGroupId(), _journalArticle1.getArticleId()));
+
+			// Preview _journalArticle1 -> _journalArticle3
+
+			Long previewId = PreviewableResolverUtil.addPreviewableMap(
+				Map.of(
+					JournalArticle.class,
+					Map.of(
+						_journalArticle1.getId(), _journalArticle3.getId())));
+
+			try (SafeCloseable safeCloseable =
+					PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
+						previewId)) {
+
+				// A non-cached method swaps to the draft.
+
+				Assert.assertEquals(
+					_journalArticle3,
+					_journalArticleLocalService.fetchArticle(
+						_group.getGroupId(), _journalArticle1.getArticleId()));
+
+				// The cached method swaps too, because the preview id is part
+				// of the cache key.
+
+				Assert.assertEquals(
+					_journalArticle3,
+					_journalArticleLocalService.getArticle(
+						_group.getGroupId(), _journalArticle1.getArticleId()));
+			}
+
+			PreviewableResolverUtil.removePreviewableMap(previewId);
+		}
+		finally {
+			ThreadLocalCacheManager.clearAll(Lifecycle.ETERNAL);
+		}
 	}
 
 	@Inject
@@ -444,12 +495,12 @@ public class JournalArticleLocalServicePreviewTest {
 	private static JournalFolderLocalService _journalFolderLocalService;
 
 	private Group _group;
+	private JournalArticle _journalArticle1;
+	private JournalArticle _journalArticle2;
+	private JournalArticle _journalArticle3;
+	private JournalArticle _journalArticle4;
 	private JournalFolder _journalFolder;
 	private final JournalFolderFixture _journalFolderFixture =
 		new JournalFolderFixture(_journalFolderLocalService);
-	private JournalArticle _journArticle1;
-	private JournalArticle _journArticle2;
-	private JournalArticle _journArticle3;
-	private JournalArticle _journArticle4;
 
 }

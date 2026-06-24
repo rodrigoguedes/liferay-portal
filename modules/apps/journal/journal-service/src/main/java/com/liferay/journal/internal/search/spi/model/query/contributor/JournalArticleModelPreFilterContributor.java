@@ -208,7 +208,7 @@ public class JournalArticleModelPreFilterContributor
 		// _contributePreviewSwapFilter. Suppress the normal head/latest filter
 		// so the previewed draft (head=false) is not excluded again.
 
-		if (!MapUtil.isEmpty(previewSwaps)) {
+		if (MapUtil.isNotEmpty(previewSwaps)) {
 			head = false;
 			headOrShowNonindexable = false;
 			latest = false;
