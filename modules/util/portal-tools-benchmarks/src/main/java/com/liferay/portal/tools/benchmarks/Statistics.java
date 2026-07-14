@@ -8,6 +8,8 @@ package com.liferay.portal.tools.benchmarks;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.util.ObjectValuePair;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -74,16 +76,42 @@ public class Statistics {
 
 			variance = variance / _runCount;
 
+			List<Long> sortedDurations = new ArrayList<>(durations);
+
+			Collections.sort(sortedDurations);
+
 			System.out.println(
 				StringBundler.concat(
 					"\nTest step: ", testStepName, "\n\n\tAverage time: ",
 					String.format("%.2f", average),
 					" ms\n\tStandard deviation: ",
-					String.format("%.2f", Math.sqrt(variance)), 2,
+					String.format("%.2f", Math.sqrt(variance)),
+					" ms\n\tp50: ", _percentile(sortedDurations, 50),
+					" ms\n\tp95: ", _percentile(sortedDurations, 95),
+					" ms\n\tp99: ", _percentile(sortedDurations, 99),
 					" ms\n\tTPS: ",
 					String.format(
 						"%.2f", _runCount * 1000 / (double)durationSum.get())));
 		}
+	}
+
+	private long _percentile(List<Long> sortedDurations, double percentile) {
+		if (sortedDurations.isEmpty()) {
+			return 0;
+		}
+
+		int index =
+			(int)Math.ceil((percentile / 100) * sortedDurations.size()) - 1;
+
+		if (index < 0) {
+			index = 0;
+		}
+
+		if (index >= sortedDurations.size()) {
+			index = sortedDurations.size() - 1;
+		}
+
+		return sortedDurations.get(index);
 	}
 
 	private static final long _START_TIME = System.currentTimeMillis();
