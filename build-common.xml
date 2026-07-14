@@ -37,6 +37,11 @@
 	<property file="${project.dir}/benchmarks/benchmarks.${env.COMPUTERNAME}.properties" />
 	<property file="${project.dir}/benchmarks/benchmarks.${env.HOST}.properties" />
 	<property file="${project.dir}/benchmarks/benchmarks.${env.HOSTNAME}.properties" />
+
+	<!-- LPD-97915: optional search benchmark dataset tier (small|medium|large).
+	     Skipped when "benchmark.dataset.tier" is undefined. -->
+
+	<property file="${project.dir}/benchmarks/benchmarks-dataset-${benchmark.dataset.tier}.properties" />
 	<property file="${project.dir}/benchmarks/benchmarks.properties" />
 
 	<property file="${project.dir}/sql/sql.profile-dxp.properties" />
