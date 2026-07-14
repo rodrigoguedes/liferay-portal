@@ -128,6 +128,22 @@ public class OpenSearchIndexSearcher extends BaseIndexSearcher {
 				end = start + maxResultWindow;
 			}
 
+			// LPD-97915: expose the effective request window dispatched to the
+			// search engine so the request-size benchmark and guardrail can
+			// observe how many hits are actually requested.
+
+			searchContext.setAttribute(
+				"search.request.effective.size", end - start);
+			searchContext.setAttribute(
+				"search.request.effective.start", start);
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					StringBundler.concat(
+						"Effective search request size ", end - start,
+						" start ", start));
+			}
+
 			SearchResponseBuilder searchResponseBuilder =
 				_getSearchResponseBuilder(searchContext);
 

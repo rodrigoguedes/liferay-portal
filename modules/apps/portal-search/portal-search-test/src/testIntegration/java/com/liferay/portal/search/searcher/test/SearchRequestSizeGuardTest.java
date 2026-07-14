@@ -142,14 +142,14 @@ public class SearchRequestSizeGuardTest {
 				_TARGET_DEFAULT_SIZE
 			);
 
-		int returnedSize = _measure("explicit-size", searchRequestBuilder);
+		int size = _measure("explicit-size", searchRequestBuilder);
 
 		Assert.assertTrue(
 			StringBundler.concat(
-				"An explicit size must always be honored, but the scenario ",
-				"returned ", returnedSize, " documents for a requested size of ",
-				_TARGET_DEFAULT_SIZE),
-			returnedSize <= _TARGET_DEFAULT_SIZE);
+				"An explicit size must always be honored, but the request ",
+				"resolved to an effective size of ", size,
+				" for a requested size of ", _TARGET_DEFAULT_SIZE),
+			size <= _TARGET_DEFAULT_SIZE);
 	}
 
 	@Test
@@ -182,17 +182,17 @@ public class SearchRequestSizeGuardTest {
 	protected int _assertSizeGuard(
 		String scenario, SearchRequestBuilder searchRequestBuilder) {
 
-		int returnedSize = _measure(scenario, searchRequestBuilder);
+		int size = _measure(scenario, searchRequestBuilder);
 
 		Assert.assertTrue(
 			StringBundler.concat(
-				"Scenario [", scenario, "] returned ", returnedSize,
-				" documents, exceeding the configured maximum ", _maxSize,
+				"Scenario [", scenario, "] requested a window of ", size,
+				", exceeding the configured maximum ", _maxSize,
 				". A search issued without an explicit size must be capped ",
 				"before it reaches the search engine."),
-			returnedSize <= _maxSize);
+			size <= _maxSize);
 
-		return returnedSize;
+		return size;
 	}
 
 	private void _addGroupAndUser() throws Exception {
@@ -252,11 +252,24 @@ public class SearchRequestSizeGuardTest {
 
 		int returnedSize = documents.size();
 
+		Integer effectiveSize = searchResponse.withSearchContextGet(
+			searchContext -> GetterUtil.getInteger(
+				searchContext.getAttribute(_EFFECTIVE_SIZE_ATTRIBUTE_NAME), -1));
+
 		System.out.println(
 			StringBundler.concat(
-				"[LPD-97915] scenario=", scenario, " returnedSize=",
-				returnedSize, " datasetSize=", _DATASET_SIZE, " searchTime=",
+				"[LPD-97915] scenario=", scenario, " effectiveSize=",
+				String.valueOf(effectiveSize), " returnedSize=", returnedSize,
+				" datasetSize=", _DATASET_SIZE, " searchTime=",
 				String.valueOf(searchResponse.getSearchTimeValue())));
+
+		// Prefer the true size dispatched to the search engine; fall back to the
+		// number of documents returned when the instrumentation attribute is
+		// unavailable.
+
+		if ((effectiveSize != null) && (effectiveSize.intValue() >= 0)) {
+			return effectiveSize.intValue();
+		}
 
 		return returnedSize;
 	}
@@ -264,6 +277,9 @@ public class SearchRequestSizeGuardTest {
 	private static final int _ABSOLUTE_MAX_SIZE = 10000;
 
 	private static final int _DATASET_SIZE = 30;
+
+	private static final String _EFFECTIVE_SIZE_ATTRIBUTE_NAME =
+		"search.request.effective.size";
 
 	private static final int _TARGET_DEFAULT_SIZE = 20;
 
