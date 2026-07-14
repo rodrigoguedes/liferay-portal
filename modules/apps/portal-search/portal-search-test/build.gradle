@@ -41,3 +41,12 @@ dependencies {
 	testIntegrationImplementation project(":apps:wiki:wiki-test-util")
 	testIntegrationImplementation project(":test:arquillian-extension-junit-bridge")
 }
+
+testIntegration {
+
+	// LPD-97915: forward the request-size guard threshold to the test JVM so a
+	// CI lane can enforce it, e.g. -Dsearch.request.size.guard.max.size=20.
+
+	systemProperties(
+		System.properties.subMap(["search.request.size.guard.max.size"]))
+}
