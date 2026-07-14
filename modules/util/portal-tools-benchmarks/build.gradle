@@ -16,7 +16,9 @@ test {
 			"benchmarks.test.jdbc.url",
 			"benchmarks.test.jdbc.username",
 			"benchmarks.test.run.count",
+			"benchmarks.test.search.keywords",
 			"benchmarks.test.skip.warm.up",
+			"benchmarks.test.task",
 			"benchmarks.test.thread.count",
 			"benchmarks.test.user.password"
 		])

@@ -33,7 +33,14 @@ public class HttpUtil {
 	public static HttpResponse doGet(String csrfToken, URL url)
 		throws Exception {
 
-		return _execute(csrfToken, "GET", url, null);
+		return _execute(null, csrfToken, "GET", url, null);
+	}
+
+	public static HttpResponse doGet(
+			String authorization, String csrfToken, URL url)
+		throws Exception {
+
+		return _execute(authorization, csrfToken, "GET", url, null);
 	}
 
 	public static HttpResponse doPost(
@@ -41,7 +48,7 @@ public class HttpUtil {
 		throws Exception {
 
 		return _execute(
-			csrfToken, "POST", url,
+			null, csrfToken, "POST", url,
 			httpURLConnection -> {
 				httpURLConnection.setDoOutput(true);
 
@@ -75,7 +82,7 @@ public class HttpUtil {
 	}
 
 	private static HttpResponse _execute(
-			String csrfToken, String httpMethod, URL url,
+			String authorization, String csrfToken, String httpMethod, URL url,
 			UnsafeConsumer<HttpURLConnection, Exception> unsafeConsumer)
 		throws Exception {
 
@@ -83,6 +90,11 @@ public class HttpUtil {
 
 		try {
 			httpURLConnection = (HttpURLConnection)url.openConnection();
+
+			if (authorization != null) {
+				httpURLConnection.addRequestProperty(
+					"Authorization", authorization);
+			}
 
 			if (csrfToken != null) {
 				httpURLConnection.addRequestProperty("X-Csrf-Token", csrfToken);

@@ -11,6 +11,7 @@ import com.liferay.petra.string.StringUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.tools.benchmarks.task.BenchmarksTask;
 import com.liferay.portal.tools.benchmarks.task.LoginBenchmarksTask;
+import com.liferay.portal.tools.benchmarks.task.SearchBenchmarksTask;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -57,7 +58,11 @@ public class BenchmarksTest {
 		_userPassword = System.getProperty(
 			"benchmarks.test.user.password", "test");
 
-		StringBundler sb = new StringBundler(16);
+		_searchKeywords = System.getProperty(
+			"benchmarks.test.search.keywords", "test");
+		_task = System.getProperty("benchmarks.test.task", "login");
+
+		StringBundler sb = new StringBundler(20);
 
 		sb.append("\nCurrent properties:\n\n\tExcluded company web IDs:");
 		sb.append(_excludedCompanyWebIds);
@@ -75,16 +80,29 @@ public class BenchmarksTest {
 		sb.append(_threadCount);
 		sb.append("\n\tUser password: ");
 		sb.append(_userPassword);
+		sb.append("\n\tTask: ");
+		sb.append(_task);
+		sb.append("\n\tSearch keywords: ");
+		sb.append(_searchKeywords);
 
 		System.out.println(sb);
 	}
 
 	public void execute() throws Exception {
-		System.out.println("Running Login test ...");
+		Function<String[], BenchmarksTask> benchmarksTaskFunction;
 
-		Function<String[], BenchmarksTask> benchmarksTaskFunction =
-			testData -> new LoginBenchmarksTask(
+		if (_task.equals("search")) {
+			System.out.println("Running Search test ...");
+
+			benchmarksTaskFunction = testData -> new SearchBenchmarksTask(
+				testData[0], testData[1], _searchKeywords, _userPassword, 8080);
+		}
+		else {
+			System.out.println("Running Login test ...");
+
+			benchmarksTaskFunction = testData -> new LoginBenchmarksTask(
 				testData[0], testData[1], _userPassword, 8080);
+		}
 
 		String[][] data = _getData();
 
@@ -202,7 +220,9 @@ public class BenchmarksTest {
 	private final String _jdbcURL;
 	private final String _jdbcUserName;
 	private final int _runCount;
+	private final String _searchKeywords;
 	private final boolean _skipWarmUp;
+	private final String _task;
 	private final int _threadCount;
 	private final String _userPassword;
 
