@@ -32,12 +32,15 @@ import com.liferay.portal.search.searcher.SearchRequestBuilder;
 import com.liferay.portal.search.searcher.SearchRequestBuilderFactory;
 import com.liferay.portal.search.searcher.SearchResponse;
 import com.liferay.portal.search.searcher.Searcher;
+import com.liferay.portal.search.searcher.SearchTimeValue;
 import com.liferay.portal.search.test.rule.SearchTestRule;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.users.admin.test.util.search.GroupBlueprint;
 import com.liferay.users.admin.test.util.search.GroupSearchFixture;
+
+import java.io.FileWriter;
 
 import java.util.List;
 import java.util.Objects;
@@ -265,13 +268,25 @@ public class SearchRequestSizeGuardTest {
 			).size();
 		}
 
-		System.out.println(
-			StringBundler.concat(
-				"[LPD-97915] scenario=", scenario, " effectiveSize=",
-				String.valueOf(effectiveSize), " returnedSize=", returnedSize,
-				" fieldsPerDoc=", fieldsPerDoc, " datasetSize=", _DATASET_SIZE,
-				" searchTime=",
-				String.valueOf(searchResponse.getSearchTimeValue())));
+		SearchTimeValue searchTimeValue = searchResponse.getSearchTimeValue();
+
+		String searchTime = "n/a";
+
+		if (searchTimeValue != null) {
+			searchTime = StringBundler.concat(
+				String.valueOf(searchTimeValue.getDuration()), " ",
+				String.valueOf(searchTimeValue.getTimeUnit()));
+		}
+
+		String result = StringBundler.concat(
+			"[LPD-97915] scenario=", scenario, " effectiveSize=",
+			String.valueOf(effectiveSize), " returnedSize=", returnedSize,
+			" fieldsPerDoc=", fieldsPerDoc, " datasetSize=", _DATASET_SIZE,
+			" maxSize=", _maxSize, " searchTime=", searchTime);
+
+		System.out.println(result);
+
+		_writeResult(result);
 
 		// Prefer the true size dispatched to the search engine; fall back to the
 		// number of documents returned when the instrumentation attribute is
@@ -282,6 +297,31 @@ public class SearchRequestSizeGuardTest {
 		}
 
 		return returnedSize;
+	}
+
+	private void _writeResult(String line) {
+
+		// The guard runs inside the Liferay container, so System.out goes to the
+		// app server console (often a foreground terminal) and is not capturable
+		// by CI. Also append each measurement to a results file so the baseline
+		// numbers can be collected. Path is overridable via
+		// -Dsearch.benchmark.results.file; defaults under the app server logs.
+
+		String path = System.getProperty(
+			"search.benchmark.results.file",
+			System.getProperty(
+				"catalina.base", System.getProperty("java.io.tmpdir")) +
+					"/logs/lpd97915-benchmark.log");
+
+		try (FileWriter fileWriter = new FileWriter(path, true)) {
+			fileWriter.write(line + "\n");
+		}
+		catch (Exception exception) {
+
+			// Best-effort: the results file is optional; never fail the guard on
+			// an I/O issue writing benchmark output.
+
+		}
 	}
 
 	private static final int _ABSOLUTE_MAX_SIZE = 10000;
