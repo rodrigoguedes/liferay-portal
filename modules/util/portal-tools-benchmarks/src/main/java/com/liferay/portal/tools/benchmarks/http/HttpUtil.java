@@ -116,7 +116,7 @@ public class HttpUtil {
 
 			return new HttpResponse(
 				System.currentTimeMillis() - startTime,
-				httpURLConnection.getHeaderFields(),
+				httpURLConnection.getHeaderFields(), bytes.limit(),
 				httpURLConnection.getResponseCode(),
 				httpURLConnection.getResponseMessage(),
 				new String(

@@ -256,11 +256,21 @@ public class SearchRequestSizeGuardTest {
 			searchContext -> GetterUtil.getInteger(
 				searchContext.getAttribute(_EFFECTIVE_SIZE_ATTRIBUTE_NAME), -1));
 
+		int fieldsPerDoc = 0;
+
+		if (!documents.isEmpty()) {
+			Document document = documents.get(0);
+
+			fieldsPerDoc = document.getFields(
+			).size();
+		}
+
 		System.out.println(
 			StringBundler.concat(
 				"[LPD-97915] scenario=", scenario, " effectiveSize=",
 				String.valueOf(effectiveSize), " returnedSize=", returnedSize,
-				" datasetSize=", _DATASET_SIZE, " searchTime=",
+				" fieldsPerDoc=", fieldsPerDoc, " datasetSize=", _DATASET_SIZE,
+				" searchTime=",
 				String.valueOf(searchResponse.getSearchTimeValue())));
 
 		// Prefer the true size dispatched to the search engine; fall back to the

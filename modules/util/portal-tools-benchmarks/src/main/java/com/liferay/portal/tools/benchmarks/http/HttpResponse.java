@@ -23,11 +23,12 @@ import java.util.regex.Pattern;
 public class HttpResponse {
 
 	public HttpResponse(
-		long duration, Map<String, List<String>> headers, int statusCode,
-		String statusLine, String text) {
+		long duration, Map<String, List<String>> headers, int length,
+		int statusCode, String statusLine, String text) {
 
 		_duration = duration;
 		_headers = headers;
+		_length = length;
 		_statusCode = statusCode;
 		_statusLine = statusLine;
 		_text = text;
@@ -45,6 +46,10 @@ public class HttpResponse {
 
 	public long getDuration() {
 		return _duration;
+	}
+
+	public int getLength() {
+		return _length;
 	}
 
 	public String getRedirect() throws Exception {
@@ -115,6 +120,7 @@ public class HttpResponse {
 
 	private final long _duration;
 	private final Map<String, List<String>> _headers;
+	private final int _length;
 	private final int _statusCode;
 	private final String _statusLine;
 	private final String _text;

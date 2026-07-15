@@ -89,6 +89,12 @@ public class SearchBenchmarksTask implements BenchmarksTask {
 
 		Assert.assertEquals(200, httpResponse.getStatusCode());
 
+		System.out.println(
+			StringBundler.concat(
+				"[LPD-97915][search] page=", page, " pageSize=", pageSize,
+				" durationMs=", httpResponse.getDuration(), " responseBytes=",
+				httpResponse.getLength()));
+
 		return httpResponse.getDuration();
 	}
 
