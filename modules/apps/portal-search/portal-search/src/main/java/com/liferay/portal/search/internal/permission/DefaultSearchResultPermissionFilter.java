@@ -46,6 +46,7 @@ import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.util.Tuple;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.search.configuration.DefaultSearchResultPermissionFilterConfiguration;
+import com.liferay.portal.search.engine.SearchEngineInformation;
 import com.liferay.portal.search.facet.nested.NestedFacet;
 import com.liferay.portal.search.hits.SearchHit;
 import com.liferay.portal.search.hits.SearchHits;
@@ -56,6 +57,7 @@ import com.liferay.portal.search.internal.facet.SimpleFacetCollector;
 import com.liferay.portal.search.internal.searcher.SearchResponseImpl;
 import com.liferay.portal.search.legacy.searcher.SearchRequestBuilderFactory;
 import com.liferay.portal.search.searcher.SearchRequestBuilder;
+import com.liferay.portal.search.searcher.SearchRequestWindowLimitExceededException;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -80,6 +82,7 @@ public class DefaultSearchResultPermissionFilter
 		FacetPostProcessor facetPostProcessor, IndexerRegistry indexerRegistry,
 		PermissionChecker permissionChecker,
 		RelatedEntryIndexerRegistry relatedEntryIndexerRegistry,
+		SearchEngineInformation searchEngineInformation,
 		Function<SearchContext, Hits> searchFunction,
 		SearchRequestBuilderFactory searchRequestBuilderFactory,
 		ServiceTrackerMap
@@ -90,6 +93,7 @@ public class DefaultSearchResultPermissionFilter
 		_indexerRegistry = indexerRegistry;
 		_permissionChecker = permissionChecker;
 		_relatedEntryIndexerRegistry = relatedEntryIndexerRegistry;
+		_searchEngineInformation = searchEngineInformation;
 		_searchFunction = searchFunction;
 		_searchRequestBuilderFactory = searchRequestBuilderFactory;
 		_serviceTrackerMap = serviceTrackerMap;
@@ -116,6 +120,21 @@ public class DefaultSearchResultPermissionFilter
 
 		int end = searchContext.getEnd();
 		int start = searchContext.getStart();
+
+		// LPD-64988: reject deep-pagination requests whose result window
+		// (from + size) exceeds the engine's index.max_result_window. This runs
+		// on the original, user-facing request before the sliding window below
+		// slices it into amplification re-queries, so it targets the
+		// guest/attacker-reachable path without breaking permission filtering.
+
+		if (end != QueryUtil.ALL_POS) {
+			int maxResultWindow = _searchEngineInformation.getMaxResultWindow();
+
+			if (end > maxResultWindow) {
+				throw new SearchRequestWindowLimitExceededException(
+					start, end, maxResultWindow);
+			}
+		}
 
 		if ((end == QueryUtil.ALL_POS) && (start == QueryUtil.ALL_POS)) {
 			Hits hits = _getHits(searchContext);
@@ -406,6 +425,7 @@ public class DefaultSearchResultPermissionFilter
 	private final IndexerRegistry _indexerRegistry;
 	private final PermissionChecker _permissionChecker;
 	private final RelatedEntryIndexerRegistry _relatedEntryIndexerRegistry;
+	private final SearchEngineInformation _searchEngineInformation;
 	private final Function<SearchContext, Hits> _searchFunction;
 	private final int _searchQueryResultWindowLimit;
 	private final SearchRequestBuilderFactory _searchRequestBuilderFactory;
