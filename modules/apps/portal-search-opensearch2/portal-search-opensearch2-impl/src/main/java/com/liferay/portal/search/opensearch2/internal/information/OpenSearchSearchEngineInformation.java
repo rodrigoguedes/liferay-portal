@@ -120,6 +120,11 @@ public class OpenSearchSearchEngineInformation
 	}
 
 	@Override
+	public int getMaxResultWindow() {
+		return openSearchConfigurationWrapper.indexMaxResultWindow();
+	}
+
+	@Override
 	public String getNodesString() {
 		try {
 			String clusterNodesString = _getClusterNodesString(

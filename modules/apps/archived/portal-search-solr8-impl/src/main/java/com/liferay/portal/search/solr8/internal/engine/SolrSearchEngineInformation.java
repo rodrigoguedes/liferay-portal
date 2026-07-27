@@ -92,6 +92,14 @@ public class SolrSearchEngineInformation implements SearchEngineInformation {
 	}
 
 	@Override
+	public int getMaxResultWindow() {
+
+		// Solr has no index.max_result_window equivalent; report no ceiling.
+
+		return Integer.MAX_VALUE;
+	}
+
+	@Override
 	public String getNodesString() {
 		try {
 			StringBundler sb = new StringBundler(5);

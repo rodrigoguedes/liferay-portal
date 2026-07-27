@@ -21,6 +21,13 @@ public interface SearchEngineInformation {
 
 	public int[] getEmbeddingVectorDimensions();
 
+	/**
+	 * Returns the search engine's {@code index.max_result_window} — the hard
+	 * ceiling on {@code from + size} for a single request. Callers use it to
+	 * reject deep-pagination requests before they reach the engine (LPD-64988).
+	 */
+	public int getMaxResultWindow();
+
 	public String getNodesString();
 
 	public String getVendorString();
