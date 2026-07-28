@@ -10,6 +10,7 @@ import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.search.legacy.searcher.SearchRequestBuilderFactory;
 import com.liferay.portal.search.searcher.SearchRequestBuilder;
+import com.liferay.portal.search.searcher.SearchRequestWindowLimitExceededException;
 import com.liferay.portal.search.searcher.SearchResponse;
 import com.liferay.portal.search.searcher.Searcher;
 import com.liferay.portal.search.web.search.request.SearchSettingsContributor;
@@ -59,8 +60,26 @@ public class SearchRequestImpl {
 		SearchContainer<Document> searchContainer = _buildSearchContainer(
 			searchSettingsImpl);
 
-		SearchResponse searchResponse = _searcher.search(
-			searchRequestBuilder.build());
+		SearchResponse searchResponse = null;
+
+		try {
+			searchResponse = _searcher.search(searchRequestBuilder.build());
+		}
+		catch (SearchRequestWindowLimitExceededException
+					searchRequestWindowLimitExceededException) {
+
+			// LPD-64988: the requested page is deeper than the engine's
+			// index.max_result_window. Web widgets render an empty result set
+			// (0 hits) rather than failing, so re-issue the request with an
+			// empty window.
+
+			searchResponse = _searcher.search(
+				searchRequestBuilder.from(
+					0
+				).size(
+					0
+				).build());
+		}
 
 		_populateSearchContainer(searchContainer, searchResponse);
 

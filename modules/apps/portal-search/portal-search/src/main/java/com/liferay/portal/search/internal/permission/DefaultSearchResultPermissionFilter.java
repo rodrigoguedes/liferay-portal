@@ -56,6 +56,7 @@ import com.liferay.portal.search.internal.facet.NestedFacetImpl;
 import com.liferay.portal.search.internal.facet.SimpleFacetCollector;
 import com.liferay.portal.search.internal.searcher.SearchResponseImpl;
 import com.liferay.portal.search.legacy.searcher.SearchRequestBuilderFactory;
+import com.liferay.portal.search.searcher.SearchRequest;
 import com.liferay.portal.search.searcher.SearchRequestBuilder;
 import com.liferay.portal.search.searcher.SearchRequestWindowLimitExceededException;
 
@@ -126,13 +127,32 @@ public class DefaultSearchResultPermissionFilter
 		// on the original, user-facing request before the sliding window below
 		// slices it into amplification re-queries, so it targets the
 		// guest/attacker-reachable path without breaking permission filtering.
+		// The effective window is resolved the same way the engine connector
+		// resolves it: the SearchRequest's from/size take precedence over the
+		// SearchContext's start/end (the new headless/web APIs set from/size,
+		// leaving start/end unset).
 
-		if (end != QueryUtil.ALL_POS) {
+		SearchRequest searchRequest = _searchRequestBuilderFactory.builder(
+			searchContext
+		).build();
+
+		int windowEnd = end;
+		int windowStart = start;
+
+		Integer from = searchRequest.getFrom();
+		Integer size = searchRequest.getSize();
+
+		if ((from != null) && (size != null)) {
+			windowStart = from;
+			windowEnd = from + size;
+		}
+
+		if (windowEnd != QueryUtil.ALL_POS) {
 			int maxResultWindow = _searchEngineInformation.getMaxResultWindow();
 
-			if (end > maxResultWindow) {
+			if (windowEnd > maxResultWindow) {
 				throw new SearchRequestWindowLimitExceededException(
-					start, end, maxResultWindow);
+					windowStart, windowEnd, maxResultWindow);
 			}
 		}
 
