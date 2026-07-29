@@ -10,6 +10,8 @@ import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.model.JournalArticleDisplay;
 import com.liferay.petra.function.UnsafeFunction;
 import com.liferay.petra.sql.dsl.query.DSLQuery;
+import com.liferay.portal.kernel.cache.thread.local.Lifecycle;
+import com.liferay.portal.kernel.cache.thread.local.ThreadLocalCachable;
 import com.liferay.portal.kernel.change.tracking.CTAware;
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.DynamicQuery;
@@ -21,6 +23,7 @@ import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.model.PersistedModel;
 import com.liferay.portal.kernel.model.SystemEventConstants;
 import com.liferay.portal.kernel.portlet.PortletRequestModel;
+import com.liferay.portal.kernel.preview.Previewable;
 import com.liferay.portal.kernel.search.Indexable;
 import com.liferay.portal.kernel.search.IndexableType;
 import com.liferay.portal.kernel.service.BaseLocalService;
@@ -660,6 +663,7 @@ public interface JournalArticleLocalService
 	 * @param id the primary key of the web content article
 	 * @return the web content article with the ID
 	 */
+	@Previewable(enabled = false)
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public JournalArticle fetchArticle(long id);
 
@@ -818,6 +822,7 @@ public interface JournalArticleLocalService
 	 * @return the matching web content article
 	 * @throws PortalException if a portal exception occurred
 	 */
+	@ThreadLocalCachable(scope = Lifecycle.ETERNAL)
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public JournalArticle getArticle(long groupId, String articleId)
 		throws PortalException;
@@ -2631,4 +2636,4 @@ public interface JournalArticleLocalService
 		throws E;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1488310260
+// LIFERAY-SERVICE-BUILDER-HASH:492426630
