@@ -297,16 +297,48 @@ public class JournalArticleModelPreFilterContributor
 	}
 
 	private Map<Long, Long> _getPreviewSwaps(SearchContext searchContext) {
-		Object attribute = searchContext.getAttribute("preview.swap.map");
+		Object attribute = searchContext.getAttribute(
+			_PREVIEW_SWAP_MAP_ATTRIBUTE_NAME);
+
+		if (attribute == null) {
+
+			// In-process callers (integration tests, FreeMarker, portlets) may
+			// still use the short key.
+
+			attribute = searchContext.getAttribute(
+				_LEGACY_PREVIEW_SWAP_MAP_ATTRIBUTE_NAME);
+		}
 
 		if (!(attribute instanceof Map)) {
 			return null;
 		}
 
-		Map<String, Map<Long, Long>> previewSwapMap =
-			(Map<String, Map<Long, Long>>)attribute;
+		Object journalSwaps = ((Map<?, ?>)attribute).get(
+			JournalArticle.class.getName());
 
-		return previewSwapMap.get(JournalArticle.class.getName());
+		if (!(journalSwaps instanceof Map)) {
+			return null;
+		}
+
+		// Normalize rather than cast. A headless request delivers JSON, so the
+		// keys arrive as String and the values as Integer or Long; an unchecked
+		// cast to Map<Long, Long> would compile and then fail at runtime in
+		// _getUID.
+
+		Map<Long, Long> previewSwaps = new HashMap<>();
+
+		for (Map.Entry<?, ?> entry : ((Map<?, ?>)journalSwaps).entrySet()) {
+			long fromClassPK = GetterUtil.getLong(
+				String.valueOf(entry.getKey()));
+			long toClassPK = GetterUtil.getLong(
+				String.valueOf(entry.getValue()));
+
+			if ((fromClassPK > 0) && (toClassPK > 0)) {
+				previewSwaps.put(fromClassPK, toClassPK);
+			}
+		}
+
+		return previewSwaps;
 	}
 
 	private String _getUID(long classPK) {
@@ -316,6 +348,17 @@ public class JournalArticleModelPreFilterContributor
 
 		return JournalArticle.class.getName() + "_PORTLET_" + classPK;
 	}
+
+	private static final String _LEGACY_PREVIEW_SWAP_MAP_ATTRIBUTE_NAME =
+		"preview.swap.map";
+
+	// Reachable over POST /o/search/v1.0/search: the allowlist in
+	// SearchResultResourceImpl._isAllowedSearchContextAttribute admits any key
+	// prefixed "search.experiences.", so no product-code change is needed
+	// outside this class to carry a preview map on a headless request.
+
+	private static final String _PREVIEW_SWAP_MAP_ATTRIBUTE_NAME =
+		"search.experiences.preview.swap.map";
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		JournalArticleModelPreFilterContributor.class);
