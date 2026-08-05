@@ -9,6 +9,7 @@ import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.dynamic.data.mapping.test.util.DDMStructureTestUtil;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.model.JournalFolder;
+import com.liferay.journal.service.JournalFolderLocalService;
 import com.liferay.journal.test.util.JournalTestUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.Group;
@@ -17,6 +18,7 @@ import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.PortalPreferencesLocalServiceUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -152,14 +154,11 @@ public class PreviewSearchBenchmarkTest {
 		_log("=== PHASE 1: PREPARATION ===");
 		_log(_describeConfiguration());
 
-		_group = GroupTestUtil.addGroup();
-
 		UserTestUtil.setUser(TestPropsValues.getUser());
 
-		_enableIndexAllArticleVersions();
+		_setUpGroupAndFolder();
 
-		_folder = JournalTestUtil.addFolder(
-			_group.getGroupId(), RandomTestUtil.randomString());
+		_enableIndexAllArticleVersions();
 
 		// Seed once at the largest N the sweep needs, then slice per N. Seeding
 		// through the service layer is the slow part (two service calls plus
@@ -300,6 +299,79 @@ public class PreviewSearchBenchmarkTest {
 	 * the postings union is empty, and the benchmark reports a flat,
 	 * reassuring, wrong curve. Fail loudly instead.
 	 */
+	/**
+	 * Resolves the site and folder the run measures against.
+	 *
+	 * <p>
+	 * Three modes, because a bulk-seeded background corpus cannot live in a site
+	 * that is deleted at teardown. Documents carry {@code groupId},
+	 * {@code scopeGroupId} and {@code groupRoleId}, and the search filters on the
+	 * group — so a corpus indexed into an ephemeral site is invisible to the next
+	 * run, silently, which is the worst possible failure for a benchmark.
+	 * </p>
+	 *
+	 * <ul>
+	 * <li><b>default</b> — create a site and folder, delete both at teardown.
+	 * Self-contained, but no corpus survives.</li>
+	 * <li>{@code -Dpreview.benchmark.keep.group=true} — create them and
+	 * <em>keep</em> them. Run once in this mode to bootstrap a persistent site;
+	 * the ids are logged and written to the manifest.</li>
+	 * <li>{@code -Dpreview.benchmark.group.id=<id>} (plus optionally
+	 * {@code folder.id}) — reuse what a keep-group run left behind, so a corpus
+	 * bulk-indexed into that site is measured by every later run.</li>
+	 * </ul>
+	 */
+	private void _setUpGroupAndFolder() throws Exception {
+		if (_reuseGroupId > 0) {
+			_group = _groupLocalService.getGroup(_reuseGroupId);
+
+			if (_reuseFolderId > 0) {
+				_folder = _journalFolderLocalService.getFolder(_reuseFolderId);
+			}
+			else {
+				_folder = JournalTestUtil.addFolder(
+					_group.getGroupId(), RandomTestUtil.randomString());
+			}
+
+			_log(
+				StringBundler.concat(
+					"Reusing persistent site groupId=", _group.getGroupId(),
+					" folderId=", _folder.getFolderId(),
+					" (neither will be deleted)"));
+
+			return;
+		}
+
+		Group group = GroupTestUtil.addGroup();
+
+		_group = group;
+
+		JournalFolder folder = JournalTestUtil.addFolder(
+			group.getGroupId(), RandomTestUtil.randomString());
+
+		_folder = folder;
+
+		if (_keepGroup) {
+
+			// Left in the non-annotated fields, so @DeleteAfterTestRun does not
+			// reach them.
+
+			_log(
+				StringBundler.concat(
+					"KEEPING site groupId=", group.getGroupId(), " folderId=",
+					folder.getFolderId(),
+					" -- bulk-seed the corpus here, then reuse with ",
+					"-Dpreview.benchmark.group.id=", group.getGroupId(),
+					" -Dpreview.benchmark.folder.id=",
+					folder.getFolderId()));
+
+			return;
+		}
+
+		_ephemeralGroup = group;
+		_ephemeralFolder = folder;
+	}
+
 	/**
 	 * Proves the contributor actually reads the attribute key this class sets.
 	 *
@@ -457,6 +529,10 @@ public class PreviewSearchBenchmarkTest {
 		sb.append(_baselineEnabled);
 		sb.append("\n  coldModeEnabled=");
 		sb.append(_coldModeEnabled);
+		sb.append("\n  reuseGroupId=");
+		sb.append(_reuseGroupId);
+		sb.append("\n  keepGroup=");
+		sb.append(_keepGroup);
 		sb.append("\n  resultsFile=");
 		sb.append(_resultsFile);
 
@@ -674,6 +750,8 @@ public class PreviewSearchBenchmarkTest {
 		// PoC 2's portal target needs the scope and the attribute name to build a
 		// headless request against the same data this run measured.
 		manifest.put("group_id", _group.getGroupId());
+		manifest.put("folder_id", _folder.getFolderId());
+		manifest.put("persistent_site", (_reuseGroupId > 0) || _keepGroup);
 		manifest.put("company_id", _group.getCompanyId());
 		manifest.put(
 			"swap_map_attribute_name", _PREVIEW_SWAP_MAP_ATTRIBUTE_NAME);
@@ -1101,12 +1179,29 @@ public class PreviewSearchBenchmarkTest {
 	private final String _engineVersion = System.getProperty(
 		"preview.benchmark.engine.version", "unknown");
 
-	@DeleteAfterTestRun
+	// The site/folder the run measures against. NOT annotated: whether they are
+	// deleted depends on the mode resolved in _setUpGroupAndFolder.
 	private JournalFolder _folder;
-
-	@DeleteAfterTestRun
 	private Group _group;
 
+	@DeleteAfterTestRun
+	private JournalFolder _ephemeralFolder;
+
+	@DeleteAfterTestRun
+	private Group _ephemeralGroup;
+
+	@Inject
+	private GroupLocalService _groupLocalService;
+
+	@Inject
+	private JournalFolderLocalService _journalFolderLocalService;
+
+	private final boolean _keepGroup = GetterUtil.getBoolean(
+		System.getProperty("preview.benchmark.keep.group", "false"));
+	private final long _reuseFolderId = GetterUtil.getLong(
+		System.getProperty("preview.benchmark.folder.id", "0"));
+	private final long _reuseGroupId = GetterUtil.getLong(
+		System.getProperty("preview.benchmark.group.id", "0"));
 	private final int _indexReadyTimeoutSeconds = GetterUtil.getInteger(
 		System.getProperty(
 			"preview.benchmark.index.ready.timeout.seconds", "600"));
