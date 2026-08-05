@@ -231,6 +231,8 @@ public class PreviewSearchBenchmarkTest {
 
 		_recordManifest();
 
+		_runGlobalWarmup();
+
 		for (int n : _nValues) {
 			for (String queryVariant : _queryVariants) {
 				for (int resultSize : _resultSizes) {
@@ -576,8 +578,30 @@ public class PreviewSearchBenchmarkTest {
 		return sb.toString();
 	}
 
+	/**
+	 * Mirrors every phase marker and assertion confirmation to a file next to
+	 * results.jsonl.
+	 *
+	 * <p>
+	 * stdout is not a reliable channel here: this test runs inside the portal
+	 * container, and its {@code System.out} reaches neither catalina.out nor the
+	 * Gradle client log (verified empirically). The run log is therefore the only
+	 * place the five phase markers and the two preparation assertions can be
+	 * inspected afterwards.
+	 * </p>
+	 */
 	private void _log(String message) {
 		System.out.println("[LPD-98298] " + message);
+
+		try (FileWriter fileWriter = new FileWriter(_runLogFile, true)) {
+			fileWriter.write(message);
+			fileWriter.write("\n");
+		}
+		catch (Exception exception) {
+
+			// Best effort: never fail a run over the human-readable log.
+
+		}
 	}
 
 	private int _maxOf(int[] values) {
@@ -791,6 +815,41 @@ public class PreviewSearchBenchmarkTest {
 			throw new AssertionError(
 				"Measurement window failed", throwables.peek());
 		}
+	}
+
+	/**
+	 * Compiles the whole measured code path BEFORE the first cell runs.
+	 *
+	 * <p>
+	 * Without this the first cell absorbs C2 compilation for every later cell.
+	 * Because the baseline cell runs first, that made preview searches look
+	 * <em>faster</em> than baseline — the smoke run reported a preview delta of
+	 * -0.58 to -2.09 ms, which is an artifact, not a finding. Per-cell warm-up
+	 * cannot fix it: by the time cell 2 starts, cell 1 has already paid the cost.
+	 * </p>
+	 *
+	 * <p>
+	 * Nothing here is recorded. It exercises both the baseline and the preview
+	 * branches, plus the aggregation path, so no measured cell is the first to
+	 * compile anything.
+	 * </p>
+	 */
+	private void _runGlobalWarmup() throws Exception {
+		_log(
+			"PHASE 3 (global): pre-warming every code path, " +
+				_globalWarmupIterations + " iterations, unrecorded");
+
+		Serializable previewSwapMap = _previewSwapMap(
+			Math.min(10, _pairs.size()), 0);
+
+		for (int i = 0; i < _globalWarmupIterations; i++) {
+			_search(null, false, 20, null);
+			_search(null, false, 20, previewSwapMap);
+			_search(_CORPUS_TOKEN, false, 20, previewSwapMap);
+			_search(null, true, 20, previewSwapMap);
+		}
+
+		_log("PHASE 3 (global) complete");
 	}
 
 	/**
@@ -1074,6 +1133,12 @@ public class PreviewSearchBenchmarkTest {
 	private _Recorder _recorder;
 	private final int _resetSettleMillis = GetterUtil.getInteger(
 		System.getProperty("preview.benchmark.reset.settle.millis", "500"));
+	private final int _globalWarmupIterations = GetterUtil.getInteger(
+		System.getProperty(
+			"preview.benchmark.global.warmup.iterations", "300"));
+	private final String _runLogFile = System.getProperty(
+		"preview.benchmark.run.log.file",
+		System.getProperty("java.io.tmpdir") + "/lpd98298-run.log");
 	private final String _resultsFile = System.getProperty(
 		"preview.benchmark.results.file",
 		System.getProperty("java.io.tmpdir") + "/lpd98298-results.jsonl");
