@@ -1,0 +1,42 @@
+// LPD-98298 PoC 1 — append to
+// modules/apps/journal/journal-test/build.gradle
+//
+// Mirrors the mechanism LPD-97915 used in portal-search-test/build.gradle:
+// forward the benchmark properties to the testIntegration task so a CI lane can
+// parameterize a run with -Dpreview.benchmark.n.values=... instead of editing
+// the test class.
+//
+// CAVEAT, and it matters: a Liferay integration test runs INSIDE the portal
+// container (Arquillian deploys the class into OSGi), so System.getProperty in
+// the test body reads the PORTAL JVM's properties. This block sets them on the
+// Gradle test JVM, which is the client side of that split. Treat it as the
+// convenience/CI channel and CATALINA_OPTS as the authoritative one --
+// run.sh emits a ready-made catalina-opts.sh for exactly that reason. The test
+// echoes its effective configuration in phase 1; check it on the first run
+// rather than trusting either channel blind.
+
+testIntegration {
+	systemProperties(
+		System.properties.subMap(
+			[
+				"preview.benchmark.background.corpus.size",
+				"preview.benchmark.baseline.enabled",
+				"preview.benchmark.cold.mode.enabled",
+				"preview.benchmark.concurrency",
+				"preview.benchmark.engine.vendor",
+				"preview.benchmark.engine.version",
+				"preview.benchmark.index.ready.timeout.seconds",
+				"preview.benchmark.manifest.file",
+				"preview.benchmark.measure.duration.seconds",
+				"preview.benchmark.measure.iterations",
+				"preview.benchmark.n.values",
+				"preview.benchmark.query.dump.dir",
+				"preview.benchmark.query.variants",
+				"preview.benchmark.reset.settle.millis",
+				"preview.benchmark.result.sizes",
+				"preview.benchmark.run.log.file",
+				"preview.benchmark.results.file",
+				"preview.benchmark.run.id",
+				"preview.benchmark.warmup.iterations"
+			]))
+}
