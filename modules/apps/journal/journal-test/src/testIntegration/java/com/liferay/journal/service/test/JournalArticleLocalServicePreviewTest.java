@@ -15,6 +15,8 @@ import com.liferay.journal.service.JournalFolderLocalService;
 import com.liferay.journal.test.util.JournalFolderFixture;
 import com.liferay.journal.test.util.JournalTestUtil;
 import com.liferay.petra.lang.SafeCloseable;
+import com.liferay.portal.kernel.cache.thread.local.Lifecycle;
+import com.liferay.portal.kernel.cache.thread.local.ThreadLocalCacheManager;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -50,21 +52,21 @@ public class JournalArticleLocalServicePreviewTest {
 	public void setUp() throws Exception {
 		_group = GroupTestUtil.addGroup();
 
-		_journArticle1 = JournalTestUtil.addArticle(
+		_journalArticle1 = JournalTestUtil.addArticle(
 			_group.getGroupId(),
 			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
 
-		_journArticle2 = JournalTestUtil.addArticle(
+		_journalArticle2 = JournalTestUtil.addArticle(
 			_group.getGroupId(),
 			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
 
 		_journalFolder = _journalFolderFixture.addFolder(
 			_group.getGroupId(), "PREVIEW");
 
-		_journArticle3 = JournalTestUtil.addArticle(
+		_journalArticle3 = JournalTestUtil.addArticle(
 			_group.getGroupId(), _journalFolder.getFolderId());
 
-		_journArticle4 = JournalTestUtil.addArticle(
+		_journalArticle4 = JournalTestUtil.addArticle(
 			_group.getGroupId(), _journalFolder.getFolderId());
 	}
 
@@ -74,12 +76,12 @@ public class JournalArticleLocalServicePreviewTest {
 		// Outside preview
 
 		Assert.assertEquals(
-			Arrays.asList(_journArticle1, _journArticle2),
+			Arrays.asList(_journalArticle1, _journalArticle2),
 			_journalArticleLocalService.getArticles(
 				_group.getGroupId(),
 				JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID));
 		Assert.assertEquals(
-			Arrays.asList(_journArticle3, _journArticle4),
+			Arrays.asList(_journalArticle3, _journalArticle4),
 			_journalArticleLocalService.getArticles(
 				_group.getGroupId(), _journalFolder.getFolderId()));
 
@@ -89,12 +91,12 @@ public class JournalArticleLocalServicePreviewTest {
 				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(0)) {
 
 			Assert.assertEquals(
-				Arrays.asList(_journArticle1, _journArticle2),
+				Arrays.asList(_journalArticle1, _journalArticle2),
 				_journalArticleLocalService.getArticles(
 					_group.getGroupId(),
 					JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID));
 			Assert.assertEquals(
-				Arrays.asList(_journArticle3, _journArticle4),
+				Arrays.asList(_journalArticle3, _journalArticle4),
 				_journalArticleLocalService.getArticles(
 					_group.getGroupId(), _journalFolder.getFolderId()));
 		}
@@ -109,12 +111,12 @@ public class JournalArticleLocalServicePreviewTest {
 					previewId1)) {
 
 			Assert.assertEquals(
-				Arrays.asList(_journArticle1, _journArticle2),
+				Arrays.asList(_journalArticle1, _journalArticle2),
 				_journalArticleLocalService.getArticles(
 					_group.getGroupId(),
 					JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID));
 			Assert.assertEquals(
-				Arrays.asList(_journArticle3, _journArticle4),
+				Arrays.asList(_journalArticle3, _journalArticle4),
 				_journalArticleLocalService.getArticles(
 					_group.getGroupId(), _journalFolder.getFolderId()));
 		}
@@ -129,56 +131,56 @@ public class JournalArticleLocalServicePreviewTest {
 					previewId2)) {
 
 			Assert.assertEquals(
-				Arrays.asList(_journArticle1, _journArticle2),
+				Arrays.asList(_journalArticle1, _journalArticle2),
 				_journalArticleLocalService.getArticles(
 					_group.getGroupId(),
 					JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID));
 			Assert.assertEquals(
-				Arrays.asList(_journArticle3, _journArticle4),
+				Arrays.asList(_journalArticle3, _journalArticle4),
 				_journalArticleLocalService.getArticles(
 					_group.getGroupId(), _journalFolder.getFolderId()));
 		}
 
-		// Preview _journArticle1 -> _journArticle3
+		// Preview _journalArticle1 -> _journalArticle3
 
 		Long previewId3 = PreviewableResolverUtil.addPreviewableMap(
 			Map.of(
 				JournalArticle.class,
-				Map.of(_journArticle1.getId(), _journArticle3.getId())));
+				Map.of(_journalArticle1.getId(), _journalArticle3.getId())));
 
 		try (SafeCloseable safeCloseable =
 				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
 					previewId3)) {
 
 			Assert.assertEquals(
-				Arrays.asList(_journArticle3, _journArticle2),
+				Arrays.asList(_journalArticle3, _journalArticle2),
 				_journalArticleLocalService.getArticles(
 					_group.getGroupId(),
 					JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID));
 			Assert.assertEquals(
-				Arrays.asList(_journArticle3, _journArticle4),
+				Arrays.asList(_journalArticle3, _journalArticle4),
 				_journalArticleLocalService.getArticles(
 					_group.getGroupId(), _journalFolder.getFolderId()));
 		}
 
-		// Preview _journArticle2 -> _journArticle4
+		// Preview _journalArticle2 -> _journalArticle4
 
 		Long previewId4 = PreviewableResolverUtil.addPreviewableMap(
 			Map.of(
 				JournalArticle.class,
-				Map.of(_journArticle2.getId(), _journArticle4.getId())));
+				Map.of(_journalArticle2.getId(), _journalArticle4.getId())));
 
 		try (SafeCloseable safeCloseable =
 				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
 					previewId4)) {
 
 			Assert.assertEquals(
-				Arrays.asList(_journArticle1, _journArticle4),
+				Arrays.asList(_journalArticle1, _journalArticle4),
 				_journalArticleLocalService.getArticles(
 					_group.getGroupId(),
 					JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID));
 			Assert.assertEquals(
-				Arrays.asList(_journArticle3, _journArticle4),
+				Arrays.asList(_journalArticle3, _journalArticle4),
 				_journalArticleLocalService.getArticles(
 					_group.getGroupId(), _journalFolder.getFolderId()));
 		}
@@ -235,21 +237,21 @@ public class JournalArticleLocalServicePreviewTest {
 		// Outside preview
 
 		Assert.assertEquals(
-			_journArticle1,
+			_journalArticle1,
 			_journalArticleLocalService.fetchArticle(
-				_group.getGroupId(), _journArticle1.getArticleId()));
+				_group.getGroupId(), _journalArticle1.getArticleId()));
 		Assert.assertEquals(
-			_journArticle2,
+			_journalArticle2,
 			_journalArticleLocalService.fetchArticle(
-				_group.getGroupId(), _journArticle2.getArticleId()));
+				_group.getGroupId(), _journalArticle2.getArticleId()));
 		Assert.assertEquals(
-			_journArticle3,
+			_journalArticle3,
 			_journalArticleLocalService.fetchArticle(
-				_group.getGroupId(), _journArticle3.getArticleId()));
+				_group.getGroupId(), _journalArticle3.getArticleId()));
 		Assert.assertEquals(
-			_journArticle4,
+			_journalArticle4,
 			_journalArticleLocalService.fetchArticle(
-				_group.getGroupId(), _journArticle4.getArticleId()));
+				_group.getGroupId(), _journalArticle4.getArticleId()));
 
 		// Nonexist preview
 
@@ -257,21 +259,21 @@ public class JournalArticleLocalServicePreviewTest {
 				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(0)) {
 
 			Assert.assertEquals(
-				_journArticle1,
+				_journalArticle1,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle1.getArticleId()));
+					_group.getGroupId(), _journalArticle1.getArticleId()));
 			Assert.assertEquals(
-				_journArticle2,
+				_journalArticle2,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle2.getArticleId()));
+					_group.getGroupId(), _journalArticle2.getArticleId()));
 			Assert.assertEquals(
-				_journArticle3,
+				_journalArticle3,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle3.getArticleId()));
+					_group.getGroupId(), _journalArticle3.getArticleId()));
 			Assert.assertEquals(
-				_journArticle4,
+				_journalArticle4,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle4.getArticleId()));
+					_group.getGroupId(), _journalArticle4.getArticleId()));
 		}
 
 		// Empty preview
@@ -284,21 +286,21 @@ public class JournalArticleLocalServicePreviewTest {
 					previewId1)) {
 
 			Assert.assertEquals(
-				_journArticle1,
+				_journalArticle1,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle1.getArticleId()));
+					_group.getGroupId(), _journalArticle1.getArticleId()));
 			Assert.assertEquals(
-				_journArticle2,
+				_journalArticle2,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle2.getArticleId()));
+					_group.getGroupId(), _journalArticle2.getArticleId()));
 			Assert.assertEquals(
-				_journArticle3,
+				_journalArticle3,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle3.getArticleId()));
+					_group.getGroupId(), _journalArticle3.getArticleId()));
 			Assert.assertEquals(
-				_journArticle4,
+				_journalArticle4,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle4.getArticleId()));
+					_group.getGroupId(), _journalArticle4.getArticleId()));
 		}
 
 		// Preview with empty model class mapping
@@ -311,103 +313,103 @@ public class JournalArticleLocalServicePreviewTest {
 					previewId2)) {
 
 			Assert.assertEquals(
-				_journArticle1,
+				_journalArticle1,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle1.getArticleId()));
+					_group.getGroupId(), _journalArticle1.getArticleId()));
 			Assert.assertEquals(
-				_journArticle2,
+				_journalArticle2,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle2.getArticleId()));
+					_group.getGroupId(), _journalArticle2.getArticleId()));
 			Assert.assertEquals(
-				_journArticle3,
+				_journalArticle3,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle3.getArticleId()));
+					_group.getGroupId(), _journalArticle3.getArticleId()));
 			Assert.assertEquals(
-				_journArticle4,
+				_journalArticle4,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle4.getArticleId()));
+					_group.getGroupId(), _journalArticle4.getArticleId()));
 		}
 
-		// Preview _journArticle1 -> _journArticle3
+		// Preview _journalArticle1 -> _journalArticle3
 
 		Long previewId3 = PreviewableResolverUtil.addPreviewableMap(
 			Map.of(
 				JournalArticle.class,
-				Map.of(_journArticle1.getId(), _journArticle3.getId())));
+				Map.of(_journalArticle1.getId(), _journalArticle3.getId())));
 
 		try (SafeCloseable safeCloseable =
 				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
 					previewId3)) {
 
-			// _journArticle1 is swapped to _journArticle3
+			// _journalArticle1 is swapped to _journalArticle3
 
 			Assert.assertEquals(
-				_journArticle3,
+				_journalArticle3,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle1.getArticleId()));
+					_group.getGroupId(), _journalArticle1.getArticleId()));
 
-			// _journArticle2, _journArticle3 and _journArticle4 are themselves
+			// _journalArticle2, _journalArticle3 and _journalArticle4 are themselves
 
 			Assert.assertEquals(
-				_journArticle2,
+				_journalArticle2,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle2.getArticleId()));
+					_group.getGroupId(), _journalArticle2.getArticleId()));
 			Assert.assertEquals(
-				_journArticle3,
+				_journalArticle3,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle3.getArticleId()));
+					_group.getGroupId(), _journalArticle3.getArticleId()));
 			Assert.assertEquals(
-				_journArticle4,
+				_journalArticle4,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle4.getArticleId()));
+					_group.getGroupId(), _journalArticle4.getArticleId()));
 
 			// Preview disabled method
 
 			Assert.assertEquals(
-				_journArticle1,
+				_journalArticle1,
 				_journalArticleLocalService.fetchArticle(
-					_journArticle1.getId()));
+					_journalArticle1.getId()));
 		}
 
-		// Preview _journArticle2 -> _journArticle4
+		// Preview _journalArticle2 -> _journalArticle4
 
 		Long previewId4 = PreviewableResolverUtil.addPreviewableMap(
 			Map.of(
 				JournalArticle.class,
-				Map.of(_journArticle2.getId(), _journArticle4.getId())));
+				Map.of(_journalArticle2.getId(), _journalArticle4.getId())));
 
 		try (SafeCloseable safeCloseable =
 				PreviewableResolverUtil.setPreviewIdWithSafeCloseable(
 					previewId4)) {
 
-			// _journArticle2 is swapped to _journArticle4
+			// _journalArticle2 is swapped to _journalArticle4
 
 			Assert.assertEquals(
-				_journArticle4,
+				_journalArticle4,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle2.getArticleId()));
+					_group.getGroupId(), _journalArticle2.getArticleId()));
 
-			// _journArticle1, _journArticle3 and _journArticle4 are themselves
+			// _journalArticle1, _journalArticle3 and _journalArticle4 are themselves
 
 			Assert.assertEquals(
-				_journArticle1,
+				_journalArticle1,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle1.getArticleId()));
+					_group.getGroupId(), _journalArticle1.getArticleId()));
 			Assert.assertEquals(
-				_journArticle3,
+				_journalArticle3,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle3.getArticleId()));
+					_group.getGroupId(), _journalArticle3.getArticleId()));
 			Assert.assertEquals(
-				_journArticle4,
+				_journalArticle4,
 				_journalArticleLocalService.fetchArticle(
-					_group.getGroupId(), _journArticle4.getArticleId()));
+					_group.getGroupId(), _journalArticle4.getArticleId()));
 
 			// Preview disabled method
 
 			Assert.assertEquals(
-				_journArticle2,
+				_journalArticle2,
 				_journalArticleLocalService.fetchArticle(
-					_journArticle2.getId()));
+					_journalArticle2.getId()));
 		}
 
 		// Preview with missing target
@@ -421,7 +423,7 @@ public class JournalArticleLocalServicePreviewTest {
 					previewId5)) {
 
 			_journalArticleLocalService.fetchArticle(
-				_group.getGroupId(), _journArticle1.getArticleId());
+				_group.getGroupId(), _journalArticle1.getArticleId());
 
 			Assert.fail();
 		}
