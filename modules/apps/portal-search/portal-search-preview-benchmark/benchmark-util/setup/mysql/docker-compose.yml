@@ -1,0 +1,21 @@
+# LPD-98298 — MySQL for the benchmark corpus.
+#
+# Only started by setup.sh when nothing is already listening on 3306 — an
+# existing MySQL (e.g. your own compose stack) is reused as-is.
+# The benchmark schema (lportal_bench) is created by seed/seed.sh, not here.
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    restart: always
+    volumes:
+      # named volume so the seeded corpus survives container recreation
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:

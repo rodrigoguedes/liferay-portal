@@ -1,0 +1,50 @@
+diff --git a/modules/util/portal-tools-sample-sql-builder/src/main/resources/com/liferay/portal/tools/sample/sql/builder/dependencies/journal_article.ftl b/modules/util/portal-tools-sample-sql-builder/src/main/resources/com/liferay/portal/tools/sample/sql/builder/dependencies/journal_article.ftl
+index cbe19c45a8830..255f49c748513 100644
+--- a/modules/util/portal-tools-sample-sql-builder/src/main/resources/com/liferay/portal/tools/sample/sql/builder/dependencies/journal_article.ftl
++++ b/modules/util/portal-tools-sample-sql-builder/src/main/resources/com/liferay/portal/tools/sample/sql/builder/dependencies/journal_article.ftl
+@@ -30,24 +30,26 @@
+ 				_journalDDMTemplateModel = defaultJournalDDMTemplateModel
+ 			/>
+ 
+-			<@insertMBDiscussion
+-				_classNameId = dataFactory.journalArticleClassNameId
+-				_classPK = journalArticleResourceModel.resourcePrimKey
+-				_groupId = groupId
+-				_maxCommentCount = 0
+-				_mbRootMessageId = dataFactory.getCounterNext()
+-				_mbThreadId = dataFactory.getCounterNext()
+-			/>
+-
+-			${dataFactory.toInsertSQL(dataFactory.newLayoutClassedModelUsageModel(groupId, layoutModel.plid, portletIdPrefix + journalArticleCount, journalArticleResourceModel))}
+-
+-			<#assign journalArticlePortletPreferencesModel = dataFactory.newPortletPreferencesModel(layoutModel.plid, portletIdPrefix + journalArticleCount) />
+-
+-			${dataFactory.toInsertSQL(journalArticlePortletPreferencesModel)}
+-
+-			<#list dataFactory.newJournalArticlePortletPreferenceValueModels(journalArticlePortletPreferencesModel, journalArticleModel, groupModel) as journalArticleResourcePortletPreferenceValueModel>
+-				${dataFactory.toInsertSQL(journalArticleResourcePortletPreferenceValueModel)}
+-			</#list>
++			<#if versionCount == dataFactory.maxJournalArticleVersionCount>
++				<@insertMBDiscussion
++					_classNameId = dataFactory.journalArticleClassNameId
++					_classPK = journalArticleResourceModel.resourcePrimKey
++					_groupId = groupId
++					_maxCommentCount = 0
++					_mbRootMessageId = dataFactory.getCounterNext()
++					_mbThreadId = dataFactory.getCounterNext()
++				/>
++
++				${dataFactory.toInsertSQL(dataFactory.newLayoutClassedModelUsageModel(groupId, layoutModel.plid, portletIdPrefix + journalArticleCount, journalArticleResourceModel))}
++
++				<#assign journalArticlePortletPreferencesModel = dataFactory.newPortletPreferencesModel(layoutModel.plid, portletIdPrefix + journalArticleCount) />
++
++				${dataFactory.toInsertSQL(journalArticlePortletPreferencesModel)}
++
++				<#list dataFactory.newJournalArticlePortletPreferenceValueModels(journalArticlePortletPreferencesModel, journalArticleModel, groupModel) as journalArticleResourcePortletPreferenceValueModel>
++					${dataFactory.toInsertSQL(journalArticleResourcePortletPreferenceValueModel)}
++				</#list>
++			</#if>
+ 		</#list>
+ 	</#list>
+ </#list>
+\ No newline at end of file

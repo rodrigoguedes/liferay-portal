@@ -1,0 +1,45 @@
+# LPD-98298 — configuration for the preview:benchmark run.
+# Location: this file must live at ${liferay.home}/preview-benchmark.properties
+# (setup/setup.sh copies it there). Every key is optional; without the file the
+# benchmark runs a smoke sweep. Full parameter guide: runbook.md section 6.
+
+# N sweep — live/draft pairs in the preview map (= terms-filter size).
+# Smoke: 1,10        Full (Jira): 1,10,100,500,1000,10000
+ns=1,10,100,500,1000,10000
+
+# Query variants per N: match_all (worst case, filters the whole corpus),
+# keyword (realistic scoped query), faceted (adds a status terms aggregation —
+# aggregations pay the terms-filter cost too, Confluence scenario 6).
+query.types=match_all,keyword
+
+# Term for the keyword variant — must match content present in BOTH the live
+# and the draft versions, so hit counts stay stable across N.
+keyword.term=test
+
+# Result page size(s). 20 = realistic page. Extension: 20,10000 (large-page
+# compounding).
+result.sizes=20
+
+# Simultaneous searchers per cell. 1 isolates the terms-filter cost.
+# Extension (Confluence scenario 7 — degradation seen at 20-30 concurrent
+# searches): 1,5,10,20,30
+concurrency=1
+
+# warm = same preview map reused every iteration (within-session amortization)
+# cold = map rotated per iteration (per-preview cost, no engine cache reuse)
+cache.modes=warm,cold
+
+# Unrecorded iterations before each measured window (JIT/cache warmup), and
+# recorded iterations per cell. Duration scales with measure.iterations x
+# number of cells. Smoke: 5 / 10.
+warmup.iterations=20
+measure.iterations=100
+
+# Run identifier — names the output folder and keys the analyze.py cells.
+# Convention: es8-remote | os2-remote (+ suffixes, e.g. es8-remote-4g).
+# setup/setup.sh keeps this in sync with the configured engine.
+target=es8-remote
+
+# Where results.jsonl and queries/ are written
+# (default: ${liferay.home}/preview-benchmark)
+#output.dir=

@@ -1,0 +1,20 @@
+# LPD-98298 — Elasticsearch 8.19 for the preview search benchmark.
+#
+#   docker compose up -d --build
+#
+# Heap is 1 GB to match the OpenSearch container — keep BOTH engines at the
+# same heap or the ES × OS comparison is invalid. (512 MB trips OpenSearch's
+# circuit breaker during bulk reindex; both engines get 1 GB for parity.)
+# Port 9200 on the host; the bundle's ElasticsearchConfiguration.config points
+# at http://localhost:9200.
+
+services:
+  elasticsearch:
+    build: .
+    container_name: elasticsearch-lpd98298
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
