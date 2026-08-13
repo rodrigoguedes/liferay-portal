@@ -1,0 +1,26 @@
+# LPD-98298 — OpenSearch 2.19 for the preview search benchmark.
+#
+# Equivalent to the container used in the benchmark runs
+# (opensearch-lpd98298), with the analysis plugins baked into the image via
+# the Dockerfile next to this file.
+#
+#   docker compose up -d --build
+#
+# Heap is 1 GB — keep BOTH engines at the same heap or the ES × OS comparison
+# is invalid. (512 MB trips OpenSearch's circuit breaker during the bulk
+# reindex of the 50k-doc corpus: HTTP 429 on _bulk and the reindex stalls.)
+# Port 9202 on the host (9200 is taken by the ES container); the bundle's
+# OpenSearchConnectionConfiguration-REMOTE.config points at
+# http://localhost:9202.
+
+services:
+  opensearch:
+    build: .
+    container_name: opensearch-lpd98298
+    ports:
+      - "9202:9200"
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
