@@ -35,6 +35,32 @@ cache.modes=warm,cold
 warmup.iterations=20
 measure.iterations=100
 
+# Does the BUILD under measurement carry the preview query rewrite?
+#
+# true  — it does (the search integration from LPD-98298 is deployed).
+# false — it does not. The swap probes are inverted (a swap must NOT move the
+#         hit count), so a build that actually has the rewrite cannot be
+#         mislabeled, and "-nopreview" is appended to the target below.
+#
+# This describes the build, not what to measure — see sweep= for that.
+preview.rewrite=true
+
+# What to MEASURE.
+#
+# full     — walk the N sweep (baseline + warm/cold at every N). Answers "what
+#            does the rewrite cost at N preview items". Requires the rewrite.
+# baseline — only the no-preview baseline cells, one per query shape.
+#
+# baseline on a build that HAS the rewrite is the fast, strictly symmetric half
+# of a baseline-vs-baseline A/B: same twelve cells and same sample count as a
+# control run, answering "did the preview work move the no-preview path".
+# Without the rewrite the sweep is baseline-only regardless.
+#
+# For the A/B, run both halves against the SAME corpus with the same keys here
+# — only the deployed build changes — then concatenate the two results.jsonl
+# for analyze.py.
+sweep=full
+
 # Run identifier — names the output folder and keys the analyze.py cells.
 # Convention: es8-remote | os2-remote (+ suffixes, e.g. es8-remote-4g).
 # setup/setup.sh keeps this in sync with the configured engine.

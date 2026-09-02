@@ -8,6 +8,7 @@ package com.liferay.portal.search.preview.benchmark.internal;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.service.JournalArticleLocalService;
 import com.liferay.petra.lang.SafeCloseable;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.orm.DynamicQuery;
 import com.liferay.portal.kernel.dao.orm.OrderFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.ProjectionFactoryUtil;
@@ -18,6 +19,7 @@ import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
@@ -84,6 +86,23 @@ import org.osgi.service.component.annotations.Reference;
  * </p>
  *
  * <p>
+ * Two independent knobs describe a run. {@code preview.rewrite} states whether
+ * the build under measurement carries the preview query rewrite — it selects
+ * which direction the swap probes assert, and appends {@code -nopreview} to the
+ * target when false, so the two builds cannot pool into one analyzer cell.
+ * {@code sweep} states what to measure: {@code full} walks the N sweep,
+ * {@code baseline} measures only the no-preview baseline cells.
+ * </p>
+ *
+ * <p>
+ * {@code sweep=baseline} on a build that DOES carry the rewrite is the fast,
+ * strictly symmetric half of a baseline-vs-baseline A/B: the rewrite is
+ * verified to be present, but the cells measured are the same twelve a control
+ * run produces, at the same sample count. Without the rewrite the sweep is
+ * baseline-only regardless, since every N would issue the identical query.
+ * </p>
+ *
+ * <p>
  * JournalArticle is the first benchmarked model. To benchmark another model
  * type (e.g. ObjectEntry once per-version indexing lands), the model-specific
  * surface is small: {@link #_discoverPairs()} (how live/draft pairs are found)
@@ -110,6 +129,10 @@ public class PreviewSearchBenchmarkOSGiCommands {
 				"No live/draft pairs found. Run the LPD-98298 seed pipeline " +
 					"first.");
 		}
+
+		// A control run does not sweep N, but it is only comparable against a
+		// preview run over the same corpus — so it is held to the same corpus
+		// requirement rather than being allowed to pass on a smaller one.
 
 		int maxN = 0;
 
@@ -143,22 +166,11 @@ public class PreviewSearchBenchmarkOSGiCommands {
 
 			_globalWarmup();
 
-			for (int n : _ns) {
-				for (String queryType : _queryTypes) {
-					for (int resultSize : _resultSizes) {
-						for (int concurrency : _concurrencies) {
-							_runCell(
-								queryType, resultSize, concurrency, 0,
-								"baseline");
-
-							for (String cacheMode : _cacheModes) {
-								_runCell(
-									queryType, resultSize, concurrency, n,
-									cacheMode);
-							}
-						}
-					}
-				}
+			if (_previewRewrite && _sweep.equals(_SWEEP_FULL)) {
+				_runPreviewSweep();
+			}
+			else {
+				_runBaselineSweep();
 			}
 		}
 
@@ -166,12 +178,24 @@ public class PreviewSearchBenchmarkOSGiCommands {
 	}
 
 	/**
-	 * Three cheap probes that make an entire run trustworthy: (1) the baseline
-	 * sees at least every pair's approved head (the corpus may also contain a
-	 * few unpaired default articles), (2) the contributor actually reads the
-	 * preview map (a swap to a nonexistent target drops the count by exactly
-	 * one), (3) a real swap keeps the count (the draft document exists in the
-	 * index and the include terms match it).
+	 * Cheap probes that make an entire run trustworthy. The first one always
+	 * applies: the baseline sees at least every pair's approved head (the
+	 * corpus may also contain a few unpaired default articles). What the two
+	 * swap probes assert depends on the build under measurement.
+	 *
+	 * <p>
+	 * With the rewrite present, the contributor must actually read the preview
+	 * map: a swap to a nonexistent target drops the count by exactly one, and
+	 * a real swap keeps it (the draft document exists in the index and the
+	 * include terms match it).
+	 * </p>
+	 *
+	 * <p>
+	 * With {@code preview.rewrite=false} the assertion is the mirror image —
+	 * neither swap may move the count. That is what separates a control run
+	 * from a mislabeled one: the flag alone would happily stamp
+	 * {@code -nopreview} on numbers measured with the rewrite active.
+	 * </p>
 	 */
 	private void _assertSwapMechanism() throws Exception {
 		SearchResponse baselineSearchResponse = _search("match_all", 1, null);
@@ -194,11 +218,7 @@ public class PreviewSearchBenchmarkOSGiCommands {
 		SearchResponse bogusSearchResponse = _search(
 			"match_all", 1, bogusSwaps);
 
-		if (bogusSearchResponse.getTotalHits() != (baselineCount - 1)) {
-			throw new IllegalStateException(
-				"Swap to a nonexistent target must drop the count by " +
-					"exactly 1 (preview map not read?)");
-		}
+		long bogusCount = bogusSearchResponse.getTotalHits();
 
 		Map<Serializable, Serializable> realSwaps = new LinkedHashMap<>();
 
@@ -206,7 +226,34 @@ public class PreviewSearchBenchmarkOSGiCommands {
 
 		SearchResponse swapSearchResponse = _search("match_all", 1, realSwaps);
 
-		if (swapSearchResponse.getTotalHits() != baselineCount) {
+		long swapCount = swapSearchResponse.getTotalHits();
+
+		if (!_previewRewrite) {
+			if ((bogusCount != baselineCount) || (swapCount != baselineCount)) {
+				throw new IllegalStateException(
+					StringBundler.concat(
+						"The preview map still moves the count (baseline ",
+						baselineCount, ", bogus ", bogusCount, ", swap ",
+						swapCount, "): this build carries the preview query ",
+						"rewrite, so the run would not be a no-preview ",
+						"control. Remove \"preview.rewrite=false\" to sweep ",
+						"it as the preview half of the A/B."));
+			}
+
+			return;
+		}
+
+		if (bogusCount != (baselineCount - 1)) {
+			throw new IllegalStateException(
+				StringBundler.concat(
+					"A swap to a nonexistent target must drop the count by ",
+					"exactly 1, but it moved from ", baselineCount, " to ",
+					bogusCount, ": this build has no preview query rewrite. ",
+					"Set \"preview.rewrite=false\" to measure it as the ",
+					"control half of the A/B."));
+		}
+
+		if (swapCount != baselineCount) {
 			throw new IllegalStateException(
 				"A real swap must keep the count (draft not indexed? run a " +
 					"full reindex with indexAllArticleVersionsEnabled=true)");
@@ -309,15 +356,37 @@ public class PreviewSearchBenchmarkOSGiCommands {
 			properties.getProperty("warmup.iterations", "10"));
 		_measureIterations = Integer.parseInt(
 			properties.getProperty("measure.iterations", "50"));
+		_previewRewrite = GetterUtil.getBoolean(
+			properties.getProperty("preview.rewrite"), true);
+
+		_sweep = properties.getProperty("sweep", _SWEEP_FULL);
+
+		if (!_sweep.equals(_SWEEP_BASELINE) && !_sweep.equals(_SWEEP_FULL)) {
+			throw new IllegalArgumentException(
+				StringBundler.concat(
+					"Invalid sweep \"", _sweep, "\": expected \"",
+					_SWEEP_BASELINE, "\" or \"", _SWEEP_FULL, "\""));
+		}
+
 		_target = properties.getProperty("target", "es8-remote");
 		_outputDir = properties.getProperty(
 			"output.dir", liferayHome + "/preview-benchmark");
+
+		// The analyzer keys a cell by target, and a control run's baseline
+		// cell is otherwise indistinguishable from the preview run's own
+		// baseline cell — concatenating the two results.jsonl would silently
+		// pool the halves of the A/B into one row.
+
+		if (!_previewRewrite) {
+			_target += "-nopreview";
+		}
 
 		_companyId = 0;
 
 		System.out.println(
 			"[preview-benchmark] config=" + file + " exists=" + file.exists() +
-				" target=" + _target);
+				" target=" + _target + " previewRewrite=" + _previewRewrite +
+					" sweep=" + _sweep);
 	}
 
 	private List<Object[]> _queryVersions(double version, int status) {
@@ -368,6 +437,8 @@ public class PreviewSearchBenchmarkOSGiCommands {
 		).put(
 			"phase", phase
 		).put(
+			"preview_rewrite", _previewRewrite
+		).put(
 			"query_type", queryType
 		).put(
 			"request_bytes", (int)requestBytes
@@ -377,6 +448,8 @@ public class PreviewSearchBenchmarkOSGiCommands {
 			"roundtrip_ms", Math.round(roundtripMs * 1000) / 1000.0
 		).put(
 			"run_id", _runId
+		).put(
+			"sweep", _sweep
 		).put(
 			"target", _target
 		).put(
@@ -390,6 +463,22 @@ public class PreviewSearchBenchmarkOSGiCommands {
 			_resultsWriter.write('\n');
 
 			_resultsWriter.flush();
+		}
+	}
+
+	/**
+	 * The no-preview baseline cells alone, one per query shape. This is the
+	 * whole of a run on a build without the rewrite (every N would issue the
+	 * identical query), and the symmetric counterpart to measure on a build
+	 * that has it when the question is whether the rewrite moved the baseline.
+	 */
+	private void _runBaselineSweep() throws Exception {
+		for (String queryType : _queryTypes) {
+			for (int resultSize : _resultSizes) {
+				for (int concurrency : _concurrencies) {
+					_runCell(queryType, resultSize, concurrency, 0, "baseline");
+				}
+			}
 		}
 	}
 
@@ -498,6 +587,25 @@ public class PreviewSearchBenchmarkOSGiCommands {
 		}
 		finally {
 			executorService.shutdownNow();
+		}
+	}
+
+	private void _runPreviewSweep() throws Exception {
+		for (int n : _ns) {
+			for (String queryType : _queryTypes) {
+				for (int resultSize : _resultSizes) {
+					for (int concurrency : _concurrencies) {
+						_runCell(
+							queryType, resultSize, concurrency, 0, "baseline");
+
+						for (String cacheMode : _cacheModes) {
+							_runCell(
+								queryType, resultSize, concurrency, n,
+								cacheMode);
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -628,6 +736,10 @@ public class PreviewSearchBenchmarkOSGiCommands {
 		return parts;
 	}
 
+	private static final String _SWEEP_BASELINE = "baseline";
+
+	private static final String _SWEEP_FULL = "full";
+
 	@Reference
 	private Aggregations _aggregations;
 
@@ -643,6 +755,7 @@ public class PreviewSearchBenchmarkOSGiCommands {
 	private int[] _ns;
 	private String _outputDir;
 	private List<long[]> _pairs;
+	private boolean _previewRewrite;
 	private Path _queriesDirectoryPath;
 	private String[] _queryTypes;
 	private int[] _resultSizes;
@@ -658,6 +771,7 @@ public class PreviewSearchBenchmarkOSGiCommands {
 	@Reference
 	private SearchRequestBuilderFactory _searchRequestBuilderFactory;
 
+	private String _sweep;
 	private String _target;
 	private int _warmupIterations;
 

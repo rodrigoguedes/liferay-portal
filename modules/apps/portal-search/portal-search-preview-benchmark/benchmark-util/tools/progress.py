@@ -10,6 +10,11 @@ $LIFERAY_BUNDLES_DIR/preview-benchmark.properties (the same defaults the
 module uses) — if the config file changed after the run started, the totals
 and the ETA are off accordingly.
 
+A baseline-only run — sweep=baseline, or any build without the rewrite —
+measures twelve cells instead of the full N sweep, so its total is a fraction
+of a full run's. Both knobs are read from the run's own rows when they carry
+preview_rewrite and sweep, and from the config only before the first row lands.
+
 The ETA extrapolates the average rate measured so far (timestamps inside
 results.jsonl). Cells are not equally expensive (large result sizes and high
 concurrency are slower), so treat it as an estimate.
@@ -25,6 +30,8 @@ from datetime import datetime, timedelta
 
 DEFAULTS = {
     "ns": "1,10,100",
+    "preview.rewrite": "true",
+    "sweep": "full",
     "query.types": "match_all,keyword",
     "result.sizes": "20",
     "concurrency": "1",
@@ -32,6 +39,11 @@ DEFAULTS = {
     "warmup.iterations": "10",
     "measure.iterations": "50",
 }
+
+
+def is_true(value):
+    """Mirror of Liferay's GetterUtil.getBoolean for the config file."""
+    return value.strip().lower() in ("true", "t", "y", "on", "1")
 
 
 def parse_timestamp(value):
@@ -69,31 +81,6 @@ def main():
     if not os.path.isfile(results_path):
         sys.exit("No results.jsonl in %s." % run_dir)
 
-    # Expected total from the config file (module defaults when keys/file absent).
-    props = dict(DEFAULTS)
-    config_path = os.path.join(bundles, "preview-benchmark.properties")
-
-    if bundles and os.path.isfile(config_path):
-        with open(config_path) as f:
-            for line in f:
-                line = line.strip()
-
-                if line and not line.startswith("#") and "=" in line:
-                    key, value = line.split("=", 1)
-                    props[key.strip()] = value.strip()
-
-    count = lambda key: len(props[key].split(","))
-
-    cells = (
-        count("ns")
-        * count("query.types")
-        * count("result.sizes")
-        * count("concurrency")
-        * (1 + count("cache.modes"))
-    )
-    per_cell = int(props["warmup.iterations"]) + int(props["measure.iterations"])
-    total = cells * per_cell
-
     # Progress from the JSONL (first line, last line, line count).
     done = 0
     first_row = last_row = None
@@ -112,7 +99,59 @@ def main():
 
             last_row = line
 
+    # Expected total from the config file (module defaults when keys/file absent).
+    props = dict(DEFAULTS)
+    config_path = os.path.join(bundles, "preview-benchmark.properties")
+
+    if bundles and os.path.isfile(config_path):
+        with open(config_path) as f:
+            for line in f:
+                line = line.strip()
+
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    props[key.strip()] = value.strip()
+
+    count = lambda key: len(props[key].split(","))
+
+    # The run's own rows are authoritative about which sweep is under way; the
+    # config is only a guess, and it may have been edited since the run began.
+    preview_rewrite = is_true(props["preview.rewrite"])
+    sweep = props["sweep"]
+    mode_source = "config"
+
+    if last_row is not None:
+        row = json.loads(last_row)
+        recorded = row.get("preview_rewrite")
+
+        if recorded is not None:
+            preview_rewrite = bool(recorded)
+            sweep = row.get("sweep", sweep)
+            mode_source = "run data"
+
+    if preview_rewrite and sweep == "full":
+        cells = (
+            count("ns")
+            * count("query.types")
+            * count("result.sizes")
+            * count("concurrency")
+            * (1 + count("cache.modes"))
+        )
+    else:
+        cells = count("query.types") * count("result.sizes") * count("concurrency")
+
+    per_cell = int(props["warmup.iterations"]) + int(props["measure.iterations"])
+    total = cells * per_cell
+
     print("run:      %s" % run_dir)
+    print(
+        "mode:     %s, sweep=%s (from %s)"
+        % (
+            "rewrite present" if preview_rewrite else "no rewrite",
+            sweep,
+            mode_source,
+        )
+    )
 
     if done == 0:
         print("progress: 0 / %d — waiting for the first sample" % total)

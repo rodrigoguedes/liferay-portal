@@ -376,4 +376,6 @@ cat <<EOF
   3. Run ONE full reindex (Control Panel > Search > Index Actions).
   4. Verify: ./setup.sh check $ENGINE
   5. Edit $BENCH_PROPS and run the benchmark (runbook.md section 7).
+     On a branch WITHOUT the preview search rewrite, set preview.rewrite=false
+     there; set sweep=baseline on both sides for a symmetric A/B.
 EOF
