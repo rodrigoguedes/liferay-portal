@@ -352,6 +352,7 @@ if [ -f "$DIST_JAR" ] &&
 	[ ! -f "$BUNDLES/osgi/portal/com.liferay.portal.search.preview.benchmark.jar" ]; then
 
 	echo ">>> Installing benchmark module into osgi/modules"
+	mkdir -p "$BUNDLES/osgi/modules"
 	cp "$DIST_JAR" "$BUNDLES/osgi/modules/"
 fi
 

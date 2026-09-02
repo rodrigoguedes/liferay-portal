@@ -45,6 +45,10 @@ if ss -tln 2>/dev/null | grep -q ":8080 "; then
 	exit 1
 fi
 
+# A bundle that has never been started (or was just rebuilt) has no
+# osgi/configs directory yet — Liferay creates it on the first boot.
+mkdir -p "$CONFIGS_DIR"
+
 # The OpenSearch config set includes the BundleBlacklistConfiguration (which
 # stops the ES8 connector); the ES set does not — hence the directory is
 # cleared first.
