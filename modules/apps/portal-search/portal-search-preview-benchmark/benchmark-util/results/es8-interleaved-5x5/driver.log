@@ -1,0 +1,61 @@
+[13:54:50] estado inicial: jar deployado é do lado B
+[13:54:50] ambiente inicial: {"es_heap_pct": 71, "es_ygc": 14676, "es_ygct": 193.4, "load1": 1.54, "ms_cap_mb": 340, "ms_used_mb": 329, "tc_ygc": 2012, "tc_ygct": 47.8}
+[13:54:50] === aquecimento inicial (fora da sequência) ===
+[13:55:26] lado A: contributor de LPD-104270_baseline, jar conferido, preview.rewrite=false
+[13:59:13]   aquecimento 1: es8-remote-nopreview-1788368186623  1440 linhas  225s  rewrite=False sweep=baseline
+[14:03:04]   aquecimento 2: es8-remote-nopreview-1788368413156  1440 linhas  230s  rewrite=False sweep=baseline
+[14:03:04] === ciclo 1/5, lado A ===
+[14:03:39] lado A: contributor de LPD-104270_baseline, jar conferido, preview.rewrite=false
+[14:07:36]   descarte A1: es8-remote-nopreview-1788368679790  1440 linhas  235s  rewrite=False sweep=baseline
+[14:11:32]   MEDIDO  A1: es8-remote-nopreview-1788368916449  1440 linhas  235s  rewrite=False sweep=baseline
+[14:11:33]     ambiente: load 2.57->3.16  es_heap 22%->75%  metaspace 329/341 MB
+[14:11:33] === ciclo 1/5, lado B ===
+[14:12:08] lado B: contributor de LPD-98298, jar conferido, preview.rewrite=true
+[14:16:00]   descarte B1: es8-remote-1788369189248  1440 linhas  230s  rewrite=True sweep=baseline
+[14:19:52]   MEDIDO  B1: es8-remote-1788369420843  1440 linhas  230s  rewrite=True sweep=baseline
+[14:19:52]     ambiente: load 3.13->3.47  es_heap 49%->26%  metaspace 329/340 MB
+[14:19:52] === ciclo 2/5, lado A ===
+[14:20:28] lado A: contributor de LPD-104270_baseline, jar conferido, preview.rewrite=false
+[14:24:20]   descarte A2: es8-remote-nopreview-1788369688935  1440 linhas  230s  rewrite=False sweep=baseline
+[14:28:07]   MEDIDO  A2: es8-remote-nopreview-1788369920581  1440 linhas  225s  rewrite=False sweep=baseline
+[14:28:07]     ambiente: load 2.74->3.3  es_heap 61%->72%  metaspace 331/341 MB
+[14:28:07] === ciclo 2/5, lado B ===
+[14:28:42] lado B: contributor de LPD-98298, jar conferido, preview.rewrite=true
+[14:32:33]   descarte B2: es8-remote-1788370182547  1440 linhas  230s  rewrite=True sweep=baseline
+[14:36:25]   MEDIDO  B2: es8-remote-1788370414223  1440 linhas  230s  rewrite=True sweep=baseline
+[14:36:25]     ambiente: load 4.41->2.84  es_heap 59%->51%  metaspace 329/342 MB
+[14:36:25] === ciclo 3/5, lado A ===
+[14:37:01] lado A: contributor de LPD-104270_baseline, jar conferido, preview.rewrite=false
+[14:40:52]   descarte A3: es8-remote-nopreview-1788370681432  1440 linhas  230s  rewrite=False sweep=baseline
+[14:44:44]   MEDIDO  A3: es8-remote-nopreview-1788370913090  1440 linhas  230s  rewrite=False sweep=baseline
+[14:44:44]     ambiente: load 4.08->3.74  es_heap 67%->53%  metaspace 331/342 MB
+[14:44:44] === ciclo 3/5, lado B ===
+[14:45:20] lado B: contributor de LPD-98298, jar conferido, preview.rewrite=true
+[14:49:11]   descarte B3: es8-remote-1788371180214  1440 linhas  230s  rewrite=True sweep=baseline
+[14:53:03]   MEDIDO  B3: es8-remote-1788371411849  1440 linhas  230s  rewrite=True sweep=baseline
+[14:53:03]     ambiente: load 3.01->3.16  es_heap 40%->66%  metaspace 332/343 MB
+[14:53:03] === ciclo 4/5, lado A ===
+[14:53:38] lado A: contributor de LPD-104270_baseline, jar conferido, preview.rewrite=false
+[14:57:30]   descarte A4: es8-remote-nopreview-1788371679040  1440 linhas  230s  rewrite=False sweep=baseline
+[15:01:22]   MEDIDO  A4: es8-remote-nopreview-1788371910666  1440 linhas  230s  rewrite=False sweep=baseline
+[15:01:22]     ambiente: load 3.85->3.4  es_heap 62%->43%  metaspace 332/342 MB
+[15:01:22] === ciclo 4/5, lado B ===
+[15:01:57] lado B: contributor de LPD-98298, jar conferido, preview.rewrite=true
+[15:15:27] retomando: A=4 B=3 já medidos, faltam B4 A5 B5
+[15:15:27] ambiente: {"es_heap_pct": 69, "es_ygc": 22424, "es_ygct": 288.3, "load1": 1.1, "ms_cap_mb": 342, "ms_used_mb": 330, "tc_ygc": 3348, "tc_ygct": 75.8}
+[15:15:27] === ciclo 4/5, lado B ===
+[15:16:02] lado B: contributor de LPD-98298, jar conferido, preview.rewrite=true
+[15:19:53]   descarte B4: es8-remote-1788373022507  1440 linhas  230s  rewrite=True sweep=baseline
+[15:23:45]   MEDIDO  B4: es8-remote-1788373254293  1440 linhas  230s  rewrite=True sweep=baseline
+[15:23:45]     ambiente: load 3.38->2.62  es_heap 66%->57%  metaspace 329/342 MB
+[15:23:45] === ciclo 5/5, lado A ===
+[15:24:21] lado A: contributor de LPD-104270_baseline, jar conferido, preview.rewrite=false
+[15:28:12]   descarte A5: es8-remote-nopreview-1788373521266  1440 linhas  230s  rewrite=False sweep=baseline
+[15:32:04]   MEDIDO  A5: es8-remote-nopreview-1788373752924  1440 linhas  230s  rewrite=False sweep=baseline
+[15:32:04]     ambiente: load 2.83->4.54  es_heap 41%->36%  metaspace 330/341 MB
+[15:32:04] === ciclo 5/5, lado B ===
+[15:32:39] lado B: contributor de LPD-98298, jar conferido, preview.rewrite=true
+[15:36:31]   descarte B5: es8-remote-1788374019760  1440 linhas  230s  rewrite=True sweep=baseline
+[15:40:22]   MEDIDO  B5: es8-remote-1788374251402  1440 linhas  230s  rewrite=True sweep=baseline
+[15:40:22]     ambiente: load 2.9->2.43  es_heap 43%->62%  metaspace 330/342 MB
+[15:40:22] === concluído: A=5 B=5, ordem ABABABABAB ===

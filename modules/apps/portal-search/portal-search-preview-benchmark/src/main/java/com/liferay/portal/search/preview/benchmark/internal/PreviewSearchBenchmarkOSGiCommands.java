@@ -16,7 +16,11 @@ import com.liferay.portal.kernel.dao.orm.ProjectionList;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.UserConstants;
 import com.liferay.portal.kernel.search.Field;
+import com.liferay.portal.kernel.search.IndexWriterHelperUtil;
 import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -113,7 +117,9 @@ import org.osgi.service.component.annotations.Reference;
  */
 @Component(
 	property = {
-		"osgi.command.function=benchmark", "osgi.command.scope=preview"
+		"osgi.command.function=benchmark", "osgi.command.function=flag",
+		"osgi.command.function=ping", "osgi.command.function=reindex",
+		"osgi.command.scope=preview"
 	},
 	service = PreviewSearchBenchmarkOSGiCommands.class
 )
@@ -175,6 +181,108 @@ public class PreviewSearchBenchmarkOSGiCommands {
 		}
 
 		System.out.println("[preview-benchmark] Results: " + runDirectoryPath);
+	}
+
+	/**
+	 * Sets or clears a {@code preview.benchmark.<name>} system property.
+	 * The code under measurement reads these at query time, so a
+	 * configuration can be switched between runs without a redeploy; every
+	 * row of results.jsonl records the flags in effect.
+	 */
+	public void flag(String name, String value) {
+		String key = "preview.benchmark." + name;
+
+		if ((value == null) || value.isEmpty() || value.equals("off")) {
+			System.clearProperty(key);
+
+			System.out.println(key + " cleared");
+
+			return;
+		}
+
+		System.setProperty(key, value);
+
+		System.out.println(key + "=" + value);
+	}
+
+	/**
+	 * Writes a file and a log line, so "the console did not run it" can be
+	 * told apart from "it ran and failed" without reading the Gogo session.
+	 */
+	public void ping() throws Exception {
+		if (_log.isInfoEnabled()) {
+			_log.info("[preview-benchmark] ping");
+		}
+
+		Files.write(
+			Paths.get(
+				System.getProperty("java.io.tmpdir"),
+				"preview-benchmark-ping.txt"),
+			String.valueOf(
+				System.currentTimeMillis()
+			).getBytes(
+				StandardCharsets.UTF_8
+			));
+
+		System.out.println("[preview-benchmark] ping");
+	}
+
+	/**
+	 * Full reindex of the benchmarked model, for the company the corpus lives
+	 * in. The runbook requires one before every run, and on a seeded schema
+	 * there is otherwise no way to ask for it: the Control Panel needs a user
+	 * the seed never creates, and index.on.startup rides on
+	 * PortalInstanceLifecycleListener, which never fires when the instance
+	 * fails to register. This calls the index writer directly instead.
+	 */
+	public void reindex() throws Exception {
+
+		// Everything here is logged as well as printed: a Gogo command's
+		// stdout goes to the console session, so a failure would otherwise be
+		// invisible to anyone reading the log.
+
+		try {
+			_loadConfiguration();
+
+			_pairs = _discoverPairs();
+
+			if (_pairs.isEmpty()) {
+				throw new IllegalStateException(
+					"No live/draft pairs found, so no company to reindex. " +
+						"Run the seed pipeline first.");
+			}
+
+			String message = StringBundler.concat(
+				"[preview-benchmark] reindexing ",
+				JournalArticle.class.getName(), " for company ", _companyId,
+				" (", _pairs.size(), " pairs in the corpus)");
+
+			System.out.println(message);
+
+			if (_log.isInfoEnabled()) {
+				_log.info(message);
+			}
+
+			IndexWriterHelperUtil.reindex(
+				UserConstants.USER_ID_DEFAULT, "preview-benchmark-reindex",
+				new long[] {_companyId}, JournalArticle.class.getName(),
+				new LinkedHashMap<String, Serializable>());
+
+			message =
+				"[preview-benchmark] reindex submitted as a background task";
+
+			System.out.println(message);
+
+			if (_log.isInfoEnabled()) {
+				_log.info(message);
+			}
+		}
+		catch (Exception exception) {
+			_log.error(
+				"[preview-benchmark] unable to submit the reindex", exception);
+
+			throw exception;
+		}
 	}
 
 	/**
@@ -323,6 +431,28 @@ public class PreviewSearchBenchmarkOSGiCommands {
 		return pairs;
 	}
 
+	private String _getFlags() {
+		StringBundler sb = new StringBundler();
+
+		for (String name : _FLAG_NAMES) {
+			String value = System.getProperty("preview.benchmark." + name);
+
+			if (value == null) {
+				continue;
+			}
+
+			if (sb.index() > 0) {
+				sb.append(';');
+			}
+
+			sb.append(name);
+			sb.append('=');
+			sb.append(value);
+		}
+
+		return sb.toString();
+	}
+
 	private void _globalWarmup() throws Exception {
 		for (int i = 0; i < (_warmupIterations * 2); i++) {
 			_search("match_all", 20, null);
@@ -429,6 +559,8 @@ public class PreviewSearchBenchmarkOSGiCommands {
 		).put(
 			"engine_version", _searchEngineInformation.getClientVersionString()
 		).put(
+			"flags", _getFlags()
+		).put(
 			"hits_total", (int)hitsTotal
 		).put(
 			"iteration", iteration
@@ -453,7 +585,8 @@ public class PreviewSearchBenchmarkOSGiCommands {
 		).put(
 			"target", _target
 		).put(
-			"terms_key_type", "uid"
+			"terms_key_type",
+			System.getProperty("preview.benchmark.terms.key.type", "uid")
 		).put(
 			"timestamp", String.valueOf(Instant.now())
 		).toString();
@@ -736,9 +869,16 @@ public class PreviewSearchBenchmarkOSGiCommands {
 		return parts;
 	}
 
+	private static final String[] _FLAG_NAMES = {
+		"numeric.terms", "sortable.field", "terms.key.type"
+	};
+
 	private static final String _SWEEP_BASELINE = "baseline";
 
 	private static final String _SWEEP_FULL = "full";
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		PreviewSearchBenchmarkOSGiCommands.class);
 
 	@Reference
 	private Aggregations _aggregations;

@@ -1,0 +1,44 @@
+{
+  "order": [
+    "A",
+    "B",
+    "A",
+    "B",
+    "A",
+    "B",
+    "A",
+    "B",
+    "A",
+    "B"
+  ],
+  "runs": {
+    "A": [
+      "es8-remote-nopreview-1788361639189",
+      "es8-remote-nopreview-1788362664059",
+      "es8-remote-nopreview-1788363660677",
+      "es8-remote-nopreview-1788364654520",
+      "es8-remote-nopreview-1788365794602"
+    ],
+    "B": [
+      "es8-remote-1788362167455",
+      "es8-remote-1788363165142",
+      "es8-remote-1788364160166",
+      "es8-remote-1788365184030",
+      "es8-remote-1788366398892"
+    ]
+  },
+  "discarded": [
+    "es8-remote-nopreview-1788361407671",
+    "es8-remote-1788361930897",
+    "es8-remote-nopreview-1788362432520",
+    "es8-remote-1788362933583",
+    "es8-remote-nopreview-1788363429116",
+    "es8-remote-1788363928609",
+    "es8-remote-nopreview-1788364427943",
+    "es8-remote-1788364922344",
+    "es8-remote-nopreview-1788365507860",
+    "es8-remote-1788366122251"
+  ],
+  "env": [],
+  "note": "Campanha de 02/09 12:03-13:26 com carga externa na maquina. Ledger reconstruido em 06/09 a partir dos diretorios de run do bundle (cada ciclo = descarte seguido de medicao); os snapshots de ambiente (env) da campanha original nao foram preservados."
+}

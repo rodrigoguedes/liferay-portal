@@ -1,0 +1,50 @@
+[18:34:09] === ciclo 1/3, config C ===
+[18:34:36]   config C ativa (numeric.terms=off sortable.field=off)
+[18:41:48]   descarte C1: es8-profile-1788730479864 (240 linhas, flags=terms.key.type=numeric)
+[18:48:59]   MEDIDO  C1: es8-profile-1788730911252 (240 linhas, flags=terms.key.type=numeric)
+[18:48:59] === ciclo 1/3, config CL ===
+[18:50:07] retomando: C
+[18:50:07] === ciclo 1/3, config CL ===
+[18:50:35]   config CL ativa (numeric.terms=off sortable.field=true)
+[18:57:48]   descarte CL1: es8-profile-1788731438228 (240 linhas, flags=sortable.field=true;terms.key.type=numeric)
+[19:05:01]   MEDIDO  CL1: es8-profile-1788731871353 (240 linhas, flags=sortable.field=true;terms.key.type=numeric)
+[19:05:01] === ciclo 1/3, config CE ===
+[19:05:28]   config CE ativa (numeric.terms=true sortable.field=off)
+[19:12:41]   descarte CE1: es8-profile-1788732331621 (240 linhas, flags=numeric.terms=true;terms.key.type=numeric)
+[19:19:54]   MEDIDO  CE1: es8-profile-1788732764266 (240 linhas, flags=numeric.terms=true;terms.key.type=numeric)
+[19:19:54] === ciclo 1/3, config CLE ===
+[19:20:21]   config CLE ativa (numeric.terms=true sortable.field=true)
+[19:27:33]   descarte CLE1: es8-profile-1788733224482 (240 linhas, flags=numeric.terms=true;sortable.field=true;terms.key.type=numeric)
+[19:34:45]   MEDIDO  CLE1: es8-profile-1788733656809 (240 linhas, flags=numeric.terms=true;sortable.field=true;terms.key.type=numeric)
+[19:34:45] === ciclo 2/3, config CL ===
+[19:35:13]   config CL ativa (numeric.terms=off sortable.field=true)
+[19:42:26]   descarte CL2: es8-profile-1788734116239 (240 linhas, flags=sortable.field=true;terms.key.type=numeric)
+[19:49:38]   MEDIDO  CL2: es8-profile-1788734549383 (240 linhas, flags=sortable.field=true;terms.key.type=numeric)
+[19:49:38] === ciclo 2/3, config CE ===
+[19:50:06]   config CE ativa (numeric.terms=true sortable.field=off)
+[19:57:19]   descarte CE2: es8-profile-1788735009268 (240 linhas, flags=numeric.terms=true;terms.key.type=numeric)
+[20:04:32]   MEDIDO  CE2: es8-profile-1788735442515 (240 linhas, flags=numeric.terms=true;terms.key.type=numeric)
+[20:04:32] === ciclo 2/3, config CLE ===
+[20:04:59]   config CLE ativa (numeric.terms=true sortable.field=true)
+[20:12:11]   descarte CLE2: es8-profile-1788735902778 (240 linhas, flags=numeric.terms=true;sortable.field=true;terms.key.type=numeric)
+[20:19:23]   MEDIDO  CLE2: es8-profile-1788736335058 (240 linhas, flags=numeric.terms=true;sortable.field=true;terms.key.type=numeric)
+[20:19:23] === ciclo 2/3, config C ===
+[20:19:51]   config C ativa (numeric.terms=off sortable.field=off)
+[20:27:04]   descarte C2: es8-profile-1788736794321 (240 linhas, flags=terms.key.type=numeric)
+[20:34:17]   MEDIDO  C2: es8-profile-1788737227299 (240 linhas, flags=terms.key.type=numeric)
+[20:34:17] === ciclo 3/3, config CE ===
+[20:34:44]   config CE ativa (numeric.terms=true sortable.field=off)
+[20:41:57]   descarte CE3: es8-profile-1788737687546 (240 linhas, flags=numeric.terms=true;terms.key.type=numeric)
+[20:49:09]   MEDIDO  CE3: es8-profile-1788738120270 (240 linhas, flags=numeric.terms=true;terms.key.type=numeric)
+[20:49:09] === ciclo 3/3, config CLE ===
+[20:49:37]   config CLE ativa (numeric.terms=true sortable.field=true)
+[20:56:49]   descarte CLE3: es8-profile-1788738580356 (240 linhas, flags=numeric.terms=true;sortable.field=true;terms.key.type=numeric)
+[21:04:01]   MEDIDO  CLE3: es8-profile-1788739012684 (240 linhas, flags=numeric.terms=true;sortable.field=true;terms.key.type=numeric)
+[21:04:01] === ciclo 3/3, config C ===
+[21:04:29]   config C ativa (numeric.terms=off sortable.field=off)
+[21:11:41]   descarte C3: es8-profile-1788739472243 (240 linhas, flags=terms.key.type=numeric)
+[21:18:54]   MEDIDO  C3: es8-profile-1788739904915 (240 linhas, flags=terms.key.type=numeric)
+[21:18:54] === ciclo 3/3, config CL ===
+[21:19:21]   config CL ativa (numeric.terms=off sortable.field=true)
+[21:26:34]   descarte CL3: es8-profile-1788740365163 (240 linhas, flags=sortable.field=true;terms.key.type=numeric)
+[21:33:47]   MEDIDO  CL3: es8-profile-1788740798078 (240 linhas, flags=sortable.field=true;terms.key.type=numeric)

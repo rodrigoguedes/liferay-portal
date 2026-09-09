@@ -1,0 +1,28 @@
+{
+  "order": [
+    "C",
+    "C",
+    "C",
+    "CD",
+    "CD",
+    "CD"
+  ],
+  "runs": {
+    "C": [
+      "es8-profile-1788667152882",
+      "es8-profile-1788667597559",
+      "es8-profile-1788668042250"
+    ],
+    "CD": [
+      "es8-profile-1788670456515",
+      "es8-profile-1788670900815",
+      "es8-profile-1788671576413"
+    ]
+  },
+  "labels": {
+    "C": "dedup + chave numerica",
+    "CD": "C + HashSet pre-dimensionado no TermsFilter (portal-kernel)"
+  },
+  "design": "em blocos (C, C, C, restart do Tomcat com portal-kernel novo, CD, CD, CD); 1 descarte antes de cada bloco; sem bloco de controle C depois de CD",
+  "discarded_note": "2 execucoes descartadas ficaram no bundle, nao copiadas"
+}

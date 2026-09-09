@@ -1,0 +1,43 @@
+[11:05:13] === ciclo 1/5, config A ===
+[11:11:53]   config A ativa (journal, portal-search)
+[11:19:05]   descarte A1 (tentativa 1): es8-profile-1788617516413 (240 linhas)
+[11:26:18]   MEDIDO  A1: es8-profile-1788617949180 (240 linhas)
+[11:26:18] === ciclo 1/5, config B ===
+[11:27:13]   config B ativa (portal-search)
+[11:34:26]   descarte B1 (tentativa 1): es8-profile-1788618436542 (240 linhas)
+[11:41:40]   MEDIDO  B1: es8-profile-1788618869786 (240 linhas)
+[11:41:40] === ciclo 1/5, config C ===
+[11:42:20]   config C ativa (journal)
+[11:49:23]   indexer ainda nao pronto, nova tentativa em 60s
+[11:57:35]   descarte C1 (tentativa 2): es8-profile-1788619826968 (240 linhas)
+[12:04:47]   MEDIDO  C1: es8-profile-1788620258861 (240 linhas)
+[12:04:47] === ciclo 2/5, config A ===
+[12:06:06]   config A ativa (journal, portal-search)
+[12:13:09]   indexer ainda nao pronto, nova tentativa em 60s
+[12:21:23]   descarte A2 (tentativa 2): es8-profile-1788621253269 (240 linhas)
+[12:28:36]   MEDIDO  A2: es8-profile-1788621686751 (240 linhas)
+[12:28:36] === ciclo 2/5, config B ===
+[12:29:29]   config B ativa (portal-search)
+[12:36:42]   descarte B2 (tentativa 1): es8-profile-1788622172596 (240 linhas)
+[12:43:56]   MEDIDO  B2: es8-profile-1788622605934 (240 linhas)
+[12:43:56] === ciclo 2/5, config C ===
+[12:44:38]   config C ativa (journal)
+[12:51:42]   indexer ainda nao pronto, nova tentativa em 60s
+[12:59:54]   descarte C2 (tentativa 2): es8-profile-1788623565610 (240 linhas)
+[13:07:05]   MEDIDO  C2: es8-profile-1788623997429 (240 linhas)
+[13:07:05] === ciclo 3/5, config A ===
+[13:08:22]   config A ativa (journal, portal-search)
+[13:15:26]   indexer ainda nao pronto, nova tentativa em 60s
+[13:23:39]   descarte A3 (tentativa 2): es8-profile-1788624989740 (240 linhas)
+[13:30:52]   MEDIDO  A3: es8-profile-1788625422882 (240 linhas)
+[13:30:52] === ciclo 3/5, config B ===
+[13:31:48]   config B ativa (portal-search)
+[13:39:00]   descarte B3 (tentativa 1): es8-profile-1788625911278 (240 linhas)
+[13:46:14]   MEDIDO  B3: es8-profile-1788626344174 (240 linhas)
+[13:46:14] === ciclo 3/5, config C ===
+[13:46:56]   config C ativa (journal)
+[13:54:00]   indexer ainda nao pronto, nova tentativa em 60s
+[14:02:12]   descarte C3 (tentativa 2): es8-profile-1788627303506 (240 linhas)
+[14:09:24]   MEDIDO  C3: es8-profile-1788627735994 (240 linhas)
+[14:09:24] === ciclo 4/5, config A ===
+[14:10:48]   config A ativa (journal, portal-search)

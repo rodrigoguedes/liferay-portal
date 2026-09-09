@@ -1,0 +1,13 @@
+target,engine_vendor,engine_version,query_type,result_size,n_preview_items,concurrency,cache_mode,terms_key_type,samples,roundtrip_p50,roundtrip_p95,roundtrip_p99,roundtrip_mean,roundtrip_stdev,took_p50,took_p95,client_overhead_p95,preview_delta_p95,request_bytes,hits_total
+es8-remote-nopreview,Elasticsearch,8.19.20,keyword,20,0,1,baseline,uid,100,9.626,14.357,16.026,10.45145,2.1645231885656444,7.0,11.0,3.3569999999999993,,12688,12550
+es8-remote-nopreview,Elasticsearch,8.19.20,keyword,20,0,5,baseline,uid,100,11.883,17.564,20.426,12.62576,2.639848997518034,9.0,14.0,3.564,,12688,12550
+es8-remote-nopreview,Elasticsearch,8.19.20,keyword,1000,0,1,baseline,uid,100,53.402,68.017,77.574,54.96697,6.197865615759195,38.0,50.0,18.016999999999996,,12690,12550
+es8-remote-nopreview,Elasticsearch,8.19.20,keyword,1000,0,5,baseline,uid,100,70.29,96.592,115.067,74.60096,11.22936950290297,47.0,73.0,23.592,,12690,12550
+es8-remote-nopreview,Elasticsearch,8.19.20,keyword,10000,0,1,baseline,uid,100,452.287,493.052,506.287,456.66517,19.234208216567765,320.0,354.0,139.05200000000002,,12691,12550
+es8-remote-nopreview,Elasticsearch,8.19.20,keyword,10000,0,5,baseline,uid,100,695.548,835.395,878.197,713.9318499999999,62.7464827157626,501.0,611.0,224.39499999999998,,12691,12550
+es8-remote-nopreview,Elasticsearch,8.19.20,match_all,20,0,1,baseline,uid,100,3.254,7.063,7.458,3.68496,1.3806511779415955,1.0,4.0,3.0629999999999997,,1940,25050
+es8-remote-nopreview,Elasticsearch,8.19.20,match_all,20,0,5,baseline,uid,100,3.354,4.748,5.153,3.43509,0.693234813731752,1.0,3.0,1.7480000000000002,,1940,25050
+es8-remote-nopreview,Elasticsearch,8.19.20,match_all,1000,0,1,baseline,uid,100,44.482,50.564,58.494,45.52563,4.428688709990803,30.0,35.0,15.564,,1942,25050
+es8-remote-nopreview,Elasticsearch,8.19.20,match_all,1000,0,5,baseline,uid,100,62.669,82.775,97.048,64.88336,9.705250291601256,41.0,57.0,25.775000000000006,,1942,25050
+es8-remote-nopreview,Elasticsearch,8.19.20,match_all,10000,0,1,baseline,uid,100,425.199,462.691,481.321,428.48720000000003,18.046400660743426,296.0,317.0,145.69099999999997,,1943,25050
+es8-remote-nopreview,Elasticsearch,8.19.20,match_all,10000,0,5,baseline,uid,100,672.751,773.142,811.009,682.15651,51.064977110964556,476.0,546.0,227.14200000000005,,1943,25050

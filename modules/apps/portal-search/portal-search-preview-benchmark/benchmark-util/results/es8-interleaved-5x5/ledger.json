@@ -1,0 +1,284 @@
+{
+  "order": [
+    "A",
+    "B",
+    "A",
+    "B",
+    "A",
+    "B",
+    "A",
+    "B",
+    "A",
+    "B"
+  ],
+  "runs": {
+    "A": [
+      "es8-remote-nopreview-1788368916449",
+      "es8-remote-nopreview-1788369920581",
+      "es8-remote-nopreview-1788370913090",
+      "es8-remote-nopreview-1788371910666",
+      "es8-remote-nopreview-1788373752924"
+    ],
+    "B": [
+      "es8-remote-1788369420843",
+      "es8-remote-1788370414223",
+      "es8-remote-1788371411849",
+      "es8-remote-1788373254293",
+      "es8-remote-1788374251402"
+    ]
+  },
+  "discarded": [
+    "es8-remote-nopreview-1788368679790",
+    "es8-remote-1788369189248",
+    "es8-remote-nopreview-1788369688935",
+    "es8-remote-1788370182547",
+    "es8-remote-nopreview-1788370681432",
+    "es8-remote-1788371180214",
+    "es8-remote-nopreview-1788371679040",
+    "es8-remote-1788373022507",
+    "es8-remote-nopreview-1788373521266",
+    "es8-remote-1788374019760"
+  ],
+  "env": [
+    {
+      "run": "A1",
+      "dir": "es8-remote-nopreview-1788368916449",
+      "before": {
+        "load1": 2.57,
+        "es_heap_pct": 22,
+        "es_ygc": 16044,
+        "es_ygct": 210.0,
+        "ms_used_mb": 329,
+        "ms_cap_mb": 341,
+        "tc_ygc": 2246,
+        "tc_ygct": 52.4
+      },
+      "after": {
+        "load1": 3.16,
+        "es_heap_pct": 75,
+        "es_ygc": 16499,
+        "es_ygct": 215.8,
+        "ms_used_mb": 329,
+        "ms_cap_mb": 341,
+        "tc_ygc": 2323,
+        "tc_ygct": 54.1
+      }
+    },
+    {
+      "run": "B1",
+      "dir": "es8-remote-1788369420843",
+      "before": {
+        "load1": 3.13,
+        "es_heap_pct": 49,
+        "es_ygc": 16955,
+        "es_ygct": 221.4,
+        "ms_used_mb": 331,
+        "ms_cap_mb": 341,
+        "tc_ygc": 2401,
+        "tc_ygct": 55.8
+      },
+      "after": {
+        "load1": 3.47,
+        "es_heap_pct": 26,
+        "es_ygc": 17412,
+        "es_ygct": 227.0,
+        "ms_used_mb": 329,
+        "ms_cap_mb": 340,
+        "tc_ygc": 2479,
+        "tc_ygct": 57.4
+      }
+    },
+    {
+      "run": "A2",
+      "dir": "es8-remote-nopreview-1788369920581",
+      "before": {
+        "load1": 2.74,
+        "es_heap_pct": 61,
+        "es_ygc": 17867,
+        "es_ygct": 232.4,
+        "ms_used_mb": 331,
+        "ms_cap_mb": 341,
+        "tc_ygc": 2557,
+        "tc_ygct": 58.9
+      },
+      "after": {
+        "load1": 3.3,
+        "es_heap_pct": 72,
+        "es_ygc": 18323,
+        "es_ygct": 237.9,
+        "ms_used_mb": 331,
+        "ms_cap_mb": 341,
+        "tc_ygc": 2634,
+        "tc_ygct": 60.4
+      }
+    },
+    {
+      "run": "B2",
+      "dir": "es8-remote-1788370414223",
+      "before": {
+        "load1": 4.41,
+        "es_heap_pct": 59,
+        "es_ygc": 18779,
+        "es_ygct": 243.5,
+        "ms_used_mb": 329,
+        "ms_cap_mb": 342,
+        "tc_ygc": 2720,
+        "tc_ygct": 62.6
+      },
+      "after": {
+        "load1": 2.84,
+        "es_heap_pct": 51,
+        "es_ygc": 19234,
+        "es_ygct": 249.0,
+        "ms_used_mb": 329,
+        "ms_cap_mb": 342,
+        "tc_ygc": 2802,
+        "tc_ygct": 64.6
+      }
+    },
+    {
+      "run": "A3",
+      "dir": "es8-remote-nopreview-1788370913090",
+      "before": {
+        "load1": 4.08,
+        "es_heap_pct": 67,
+        "es_ygc": 19690,
+        "es_ygct": 254.6,
+        "ms_used_mb": 331,
+        "ms_cap_mb": 342,
+        "tc_ygc": 2880,
+        "tc_ygct": 66.2
+      },
+      "after": {
+        "load1": 3.74,
+        "es_heap_pct": 53,
+        "es_ygc": 20146,
+        "es_ygct": 260.1,
+        "ms_used_mb": 331,
+        "ms_cap_mb": 342,
+        "tc_ygc": 2958,
+        "tc_ygct": 67.8
+      }
+    },
+    {
+      "run": "B3",
+      "dir": "es8-remote-1788371411849",
+      "before": {
+        "load1": 3.01,
+        "es_heap_pct": 40,
+        "es_ygc": 20602,
+        "es_ygct": 265.7,
+        "ms_used_mb": 332,
+        "ms_cap_mb": 343,
+        "tc_ygc": 3035,
+        "tc_ygct": 69.2
+      },
+      "after": {
+        "load1": 3.16,
+        "es_heap_pct": 66,
+        "es_ygc": 21057,
+        "es_ygct": 271.3,
+        "ms_used_mb": 332,
+        "ms_cap_mb": 343,
+        "tc_ygc": 3115,
+        "tc_ygct": 71.0
+      }
+    },
+    {
+      "run": "A4",
+      "dir": "es8-remote-nopreview-1788371910666",
+      "before": {
+        "load1": 3.85,
+        "es_heap_pct": 62,
+        "es_ygc": 21512,
+        "es_ygct": 276.9,
+        "ms_used_mb": 332,
+        "ms_cap_mb": 342,
+        "tc_ygc": 3193,
+        "tc_ygct": 72.5
+      },
+      "after": {
+        "load1": 3.4,
+        "es_heap_pct": 43,
+        "es_ygc": 21968,
+        "es_ygct": 282.5,
+        "ms_used_mb": 332,
+        "ms_cap_mb": 342,
+        "tc_ygc": 3270,
+        "tc_ygct": 74.1
+      }
+    },
+    {
+      "run": "B4",
+      "dir": "es8-remote-1788373254293",
+      "before": {
+        "load1": 3.38,
+        "es_heap_pct": 66,
+        "es_ygc": 22880,
+        "es_ygct": 293.7,
+        "ms_used_mb": 330,
+        "ms_cap_mb": 342,
+        "tc_ygc": 3426,
+        "tc_ygct": 77.5
+      },
+      "after": {
+        "load1": 2.62,
+        "es_heap_pct": 57,
+        "es_ygc": 23336,
+        "es_ygct": 299.2,
+        "ms_used_mb": 329,
+        "ms_cap_mb": 342,
+        "tc_ygc": 3506,
+        "tc_ygct": 79.3
+      }
+    },
+    {
+      "run": "A5",
+      "dir": "es8-remote-nopreview-1788373752924",
+      "before": {
+        "load1": 2.83,
+        "es_heap_pct": 41,
+        "es_ygc": 23792,
+        "es_ygct": 304.7,
+        "ms_used_mb": 332,
+        "ms_cap_mb": 342,
+        "tc_ygc": 3584,
+        "tc_ygct": 80.8
+      },
+      "after": {
+        "load1": 4.54,
+        "es_heap_pct": 36,
+        "es_ygc": 24248,
+        "es_ygct": 310.3,
+        "ms_used_mb": 330,
+        "ms_cap_mb": 341,
+        "tc_ygc": 3661,
+        "tc_ygct": 82.5
+      }
+    },
+    {
+      "run": "B5",
+      "dir": "es8-remote-1788374251402",
+      "before": {
+        "load1": 2.9,
+        "es_heap_pct": 43,
+        "es_ygc": 24704,
+        "es_ygct": 315.6,
+        "ms_used_mb": 330,
+        "ms_cap_mb": 342,
+        "tc_ygc": 3739,
+        "tc_ygct": 84.0
+      },
+      "after": {
+        "load1": 2.43,
+        "es_heap_pct": 62,
+        "es_ygc": 25159,
+        "es_ygct": 321.3,
+        "ms_used_mb": 330,
+        "ms_cap_mb": 342,
+        "tc_ygc": 3817,
+        "tc_ygct": 85.6
+      }
+    }
+  ]
+}

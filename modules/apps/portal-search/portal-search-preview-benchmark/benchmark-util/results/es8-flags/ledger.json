@@ -1,0 +1,216 @@
+{
+  "order": [
+    "C",
+    "CL",
+    "CE",
+    "CLE",
+    "CL",
+    "CE",
+    "CLE",
+    "C",
+    "CE",
+    "CLE",
+    "C",
+    "CL"
+  ],
+  "runs": {
+    "C": [
+      "es8-profile-1788730911252",
+      "es8-profile-1788737227299",
+      "es8-profile-1788739904915"
+    ],
+    "CL": [
+      "es8-profile-1788731871353",
+      "es8-profile-1788734549383",
+      "es8-profile-1788740798078"
+    ],
+    "CE": [
+      "es8-profile-1788732764266",
+      "es8-profile-1788735442515",
+      "es8-profile-1788738120270"
+    ],
+    "CLE": [
+      "es8-profile-1788733656809",
+      "es8-profile-1788736335058",
+      "es8-profile-1788739012684"
+    ]
+  },
+  "labels": {
+    "C": "controle: chave numerica (text), JSON string",
+    "CL": "C + campo long _sortable",
+    "CE": "C + JSON numerico",
+    "CLE": "C + campo long + JSON numerico"
+  },
+  "design": "intercalado com rotacao por ciclo, flags de runtime, sem redeploy; 1 descarte por troca; 3 ciclos",
+  "env": [
+    {
+      "run": "C1",
+      "flags": "terms.key.type=numeric",
+      "before": {
+        "load1": 0.2,
+        "MemAvailable": 13286,
+        "SwapFree": 3506
+      },
+      "after": {
+        "load1": 0.07,
+        "MemAvailable": 13250,
+        "SwapFree": 3507
+      }
+    },
+    {
+      "run": "CL1",
+      "flags": "sortable.field=true;terms.key.type=numeric",
+      "before": {
+        "load1": 0.18,
+        "MemAvailable": 16385,
+        "SwapFree": 3479
+      },
+      "after": {
+        "load1": 0.16,
+        "MemAvailable": 16377,
+        "SwapFree": 3479
+      }
+    },
+    {
+      "run": "CE1",
+      "flags": "numeric.terms=true;terms.key.type=numeric",
+      "before": {
+        "load1": 0.3,
+        "MemAvailable": 16290,
+        "SwapFree": 3480
+      },
+      "after": {
+        "load1": 0.3,
+        "MemAvailable": 16344,
+        "SwapFree": 3445
+      }
+    },
+    {
+      "run": "CLE1",
+      "flags": "numeric.terms=true;sortable.field=true;terms.key.type=numeric",
+      "before": {
+        "load1": 0.19,
+        "MemAvailable": 19190,
+        "SwapFree": 3849
+      },
+      "after": {
+        "load1": 0.06,
+        "MemAvailable": 19189,
+        "SwapFree": 3849
+      }
+    },
+    {
+      "run": "CL2",
+      "flags": "sortable.field=true;terms.key.type=numeric",
+      "before": {
+        "load1": 0.03,
+        "MemAvailable": 19290,
+        "SwapFree": 3849
+      },
+      "after": {
+        "load1": 0.09,
+        "MemAvailable": 19120,
+        "SwapFree": 3850
+      }
+    },
+    {
+      "run": "CE2",
+      "flags": "numeric.terms=true;terms.key.type=numeric",
+      "before": {
+        "load1": 0.07,
+        "MemAvailable": 19119,
+        "SwapFree": 3850
+      },
+      "after": {
+        "load1": 0.11,
+        "MemAvailable": 19199,
+        "SwapFree": 3850
+      }
+    },
+    {
+      "run": "CLE2",
+      "flags": "numeric.terms=true;sortable.field=true;terms.key.type=numeric",
+      "before": {
+        "load1": 0.01,
+        "MemAvailable": 19197,
+        "SwapFree": 3851
+      },
+      "after": {
+        "load1": 0.11,
+        "MemAvailable": 19111,
+        "SwapFree": 3853
+      }
+    },
+    {
+      "run": "C2",
+      "flags": "terms.key.type=numeric",
+      "before": {
+        "load1": 0.37,
+        "MemAvailable": 19093,
+        "SwapFree": 3853
+      },
+      "after": {
+        "load1": 0.08,
+        "MemAvailable": 19109,
+        "SwapFree": 3853
+      }
+    },
+    {
+      "run": "CE3",
+      "flags": "numeric.terms=true;terms.key.type=numeric",
+      "before": {
+        "load1": 0.26,
+        "MemAvailable": 19107,
+        "SwapFree": 3853
+      },
+      "after": {
+        "load1": 0.47,
+        "MemAvailable": 19121,
+        "SwapFree": 3854
+      }
+    },
+    {
+      "run": "CLE3",
+      "flags": "numeric.terms=true;sortable.field=true;terms.key.type=numeric",
+      "before": {
+        "load1": 0.07,
+        "MemAvailable": 19105,
+        "SwapFree": 3854
+      },
+      "after": {
+        "load1": 0.06,
+        "MemAvailable": 19100,
+        "SwapFree": 3855
+      }
+    },
+    {
+      "run": "C3",
+      "flags": "terms.key.type=numeric",
+      "before": {
+        "load1": 0.07,
+        "MemAvailable": 19099,
+        "SwapFree": 3855
+      },
+      "after": {
+        "load1": 0.14,
+        "MemAvailable": 19083,
+        "SwapFree": 3856
+      }
+    },
+    {
+      "run": "CL3",
+      "flags": "sortable.field=true;terms.key.type=numeric",
+      "before": {
+        "load1": 0.17,
+        "MemAvailable": 19096,
+        "SwapFree": 3857
+      },
+      "after": {
+        "load1": 3.41,
+        "MemAvailable": 19079,
+        "SwapFree": 3857
+      }
+    }
+  ],
+  "discarded_note": "12 descartes (1 por troca) ficaram no bundle; C1 veio da primeira tentativa, morta pelo watchdog de memoria do runner apos o run medido, e a campanha retomou do ledger"
+}

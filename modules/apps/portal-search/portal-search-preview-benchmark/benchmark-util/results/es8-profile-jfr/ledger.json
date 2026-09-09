@@ -1,0 +1,34 @@
+{
+  "runs": {
+    "A": "es8-profile-1788575059909",
+    "C": "es8-profile-1788634484066"
+  },
+  "A": {
+    "config": "original: Field.UID + contribuicao duplicada",
+    "run_local": "2026-09-04 23:24:19",
+    "jfr_start_utc": "2026-09-04 22:21:45",
+    "jfr_samples_dump": "A-samples.txt.gz",
+    "search_thread": "pool-16-thread-4",
+    "search_thread_samples": 446,
+    "classifier_denominator": 456,
+    "note": "jfr print --events jdk.ExecutionSample; a gravacao cobre 19:21-23:30 local de 04/09; o run perfilado e o de 23:24. Baseline e N=10000 na mesma thread.",
+    "search_thread_samples_raw": 446,
+    "search_thread_samples_unique": 223,
+    "clock_note": "A gravacao de A comecou 4 h antes do run; o relogio do JFR ficou ~24 s adiantado em relacao ao relogio de parede do JSONL (amostras em 02:23:56-02:24:05 UTC, JSONL em 02:24:20-02:24:29 UTC). E a unica atividade da thread do harness na gravacao e tem a duracao do run."
+  },
+  "C": {
+    "config": "dedup + chave numerica journalArticleVersionId (text)",
+    "run_local": "2026-09-05 15:54:44",
+    "jfr_start_utc": "2026-09-05 18:54:40",
+    "jfr_samples_dump": "C-samples.txt.gz",
+    "search_thread": "pool-57-thread-3",
+    "search_thread_samples": 114,
+    "classifier_denominator": 110,
+    "note": "run dedicado depois da campanha A/B/C (que terminou 14:02); ~110 amostras porque o custo caiu 5x com o mesmo numero de iteracoes.",
+    "search_thread_samples_raw": 114,
+    "search_thread_samples_unique": 57
+  },
+  "jfr_binaries": "bundles/preview-benchmark/jfr/ (107 MB + 7 MB; fora do repositorio)",
+  "reproduce": "python3 topframes.py A-samples.txt.gz  (frames mais quentes, self time, com chamadores)",
+  "duplication_note": "Os dumps do jfr print contem cada evento exatamente duas vezes (mesmo instante e pilha). As fatias percentuais nao mudam; contagens e resolucao devem usar as amostras unicas (223 e 57). topframes.py deduplica."
+}
