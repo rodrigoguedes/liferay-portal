@@ -10,7 +10,6 @@ import com.liferay.osgi.service.tracker.collections.list.ServiceTrackerListFacto
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMap;
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMapFactory;
 import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.kernel.model.BaseModel;
 import com.liferay.portal.kernel.search.BooleanClauseOccur;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Indexer;
@@ -22,11 +21,9 @@ import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.search.internal.indexer.IncludeExcludeUtil;
 import com.liferay.portal.search.internal.indexer.IndexerProvidedClausesUtil;
 import com.liferay.portal.search.internal.indexer.ModelPreFilterContributorsRegistry;
-import com.liferay.portal.search.internal.indexer.ModelSearchSettingsImpl;
 import com.liferay.portal.search.permission.SearchPermissionFilterContributor;
 import com.liferay.portal.search.spi.model.query.contributor.ModelPreFilterContributor;
 import com.liferay.portal.search.spi.model.query.contributor.QueryPreFilterContributor;
-import com.liferay.portal.search.spi.model.registrar.ModelSearchConfigurator;
 import com.liferay.portal.search.spi.model.registrar.ModelSearchSettings;
 import com.liferay.portal.search.util.SearchStringUtil;
 
@@ -225,8 +222,13 @@ public class PreFilterContributorHelperImpl
 
 		_addIndexerProvidedPreFilters(booleanFilter, indexer, searchContext);
 
-		_addModelProvidedPreFilters(
-			booleanFilter, _getModelSearchSettings(indexer), searchContext);
+		// LPD-104270 measurement: the model pre-filter contributors already ran
+		// inside _addIndexerProvidedPreFilters, by way of
+		// indexer.postProcessContextBooleanFilter -> DefaultIndexer ->
+		// IndexerQueryBuilderImpl. Running them again here emits every model
+		// clause twice, which doubles the request body. Suppressed to measure
+		// what the duplication costs; a shippable fix has to keep legacy
+		// indexers that never reach IndexerQueryBuilderImpl working.
 
 		return booleanFilter;
 	}
@@ -235,25 +237,6 @@ public class PreFilterContributorHelperImpl
 		Class<?> clazz = object.getClass();
 
 		return clazz.getName();
-	}
-
-	private ModelSearchSettings _getModelSearchSettings(Indexer<?> indexer) {
-		ModelSearchConfigurator<?> modelSearchConfigurator =
-			new ModelSearchConfigurator<BaseModel<?>>() {
-
-				@Override
-				public String getClassName() {
-					return indexer.getClassName();
-				}
-
-				@Override
-				public boolean isStagingAware() {
-					return indexer.isStagingAware();
-				}
-
-			};
-
-		return new ModelSearchSettingsImpl(modelSearchConfigurator);
 	}
 
 	private String _getParentEntryClassName(String entryClassName) {
