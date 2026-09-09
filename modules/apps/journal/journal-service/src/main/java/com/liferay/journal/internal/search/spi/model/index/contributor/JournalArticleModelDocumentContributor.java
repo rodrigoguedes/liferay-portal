@@ -62,6 +62,15 @@ public class JournalArticleModelDocumentContributor
 
 		document.addKeyword(Field.UID, _uidFactory.getUID(journalArticle));
 
+		// LPD-104270 measurement: a numeric per-version key for the preview
+		// swap filter. The rewrite currently keys its two terms filters on
+		// Field.UID, whose values are ~55-character
+		// "<class name>_PORTLET_<id>" strings; profiling put 59% of the added
+		// CPU in escaping and writing those strings into the request JSON.
+		// This is the same identity in ~6 digits.
+
+		document.addNumber("journalArticleVersionId", journalArticle.getId());
+
 		String articleId = journalArticle.getArticleId();
 
 		if (journalArticle.isInTrash()) {

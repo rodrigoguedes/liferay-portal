@@ -24,10 +24,13 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.FastDateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.portal.preview.PreviewableResolverUtil;
 import com.liferay.portal.search.asset.AssetSubtypeIdentifier;
 import com.liferay.portal.search.filter.DateRangeFilterBuilder;
 import com.liferay.portal.search.filter.FilterBuilders;
@@ -42,6 +45,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -61,8 +65,26 @@ public class JournalArticleModelPreFilterContributor
 		BooleanFilter booleanFilter, ModelSearchSettings modelSearchSettings,
 		SearchContext searchContext) {
 
-		_workflowStatusModelPreFilterContributor.contribute(
-			booleanFilter, modelSearchSettings, searchContext);
+		// LPD-92301 Preview Framework POC: when a preview swap map is present
+		// for JournalArticle, replace the normal "status=approved AND head"
+		// restriction with a relaxed clause that excludes the approved/live
+		// version (fromClassPK) and includes the specific draft version
+		// (toClassPK), keyed on Field.UID (all versions of a JournalArticle
+		// share entryClassPK = resourcePrimKey, so the per-version UID is the
+		// only safe key). The swap map comes from the preview context on the
+		// current thread (PreviewableResolverUtil), the same source the
+		// service-layer PreviewableAdvice reads.
+
+		Map<Serializable, Serializable> previewSwaps =
+			PreviewableResolverUtil.getPreviewableMap(JournalArticle.class);
+
+		if (MapUtil.isEmpty(previewSwaps)) {
+			_workflowStatusModelPreFilterContributor.contribute(
+				booleanFilter, modelSearchSettings, searchContext);
+		}
+		else {
+			_contributePreviewSwapFilter(booleanFilter, previewSwaps);
+		}
 
 		Long classNameId = (Long)searchContext.getAttribute(
 			Field.CLASS_NAME_ID);
@@ -182,6 +204,17 @@ public class JournalArticleModelPreFilterContributor
 		boolean showNonindexable = GetterUtil.getBoolean(
 			searchContext.getAttribute("showNonindexable"));
 
+		// Preview mode already added the combined status + head clause in
+		// _contributePreviewSwapFilter. Suppress the normal head/latest filter
+		// so the previewed draft (head=false) is not excluded again.
+
+		if (MapUtil.isNotEmpty(previewSwaps)) {
+			head = false;
+			headOrShowNonindexable = false;
+			latest = false;
+			showNonindexable = false;
+		}
+
 		if (latest && !relatedClassName && !showNonindexable) {
 			booleanFilter.addRequiredTerm("latest", Boolean.TRUE);
 		}
@@ -235,6 +268,53 @@ public class JournalArticleModelPreFilterContributor
 
 		booleanFilter.add(dateRangeFilterBuilder.build());
 	}
+
+	private void _contributePreviewSwapFilter(
+		BooleanFilter booleanFilter,
+		Map<Serializable, Serializable> previewSwaps) {
+
+		// LPD-104270 measurement: keyed on the numeric per-version id rather
+		// than Field.UID. The UID values are ~55-character
+		// "<class name>_PORTLET_<id>" strings and profiling put 59% of the
+		// added CPU in escaping and writing them into the request JSON; the
+		// same identity is ~6 digits.
+
+		TermsFilter fromVersionIdsTermsFilter = new TermsFilter(
+			_VERSION_ID_FIELD_NAME);
+		TermsFilter toVersionIdsTermsFilter = new TermsFilter(
+			_VERSION_ID_FIELD_NAME);
+
+		for (Map.Entry<Serializable, Serializable> entry :
+				previewSwaps.entrySet()) {
+
+			fromVersionIdsTermsFilter.addValue(String.valueOf(entry.getKey()));
+			toVersionIdsTermsFilter.addValue(String.valueOf(entry.getValue()));
+		}
+
+		// Keep all approved/head/live content except the previewed-away
+		// versions...
+
+		BooleanFilter liveBooleanFilter = new BooleanFilter();
+
+		liveBooleanFilter.addRequiredTerm(
+			Field.STATUS, WorkflowConstants.STATUS_APPROVED);
+		liveBooleanFilter.addRequiredTerm("head", Boolean.TRUE);
+		liveBooleanFilter.add(
+			fromVersionIdsTermsFilter, BooleanClauseOccur.MUST_NOT);
+
+		// ...OR include the specific draft versions being previewed.
+
+		BooleanFilter previewBooleanFilter = new BooleanFilter();
+
+		previewBooleanFilter.add(liveBooleanFilter, BooleanClauseOccur.SHOULD);
+		previewBooleanFilter.add(
+			toVersionIdsTermsFilter, BooleanClauseOccur.SHOULD);
+
+		booleanFilter.add(previewBooleanFilter, BooleanClauseOccur.MUST);
+	}
+
+	private static final String _VERSION_ID_FIELD_NAME =
+		"journalArticleVersionId";
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		JournalArticleModelPreFilterContributor.class);
