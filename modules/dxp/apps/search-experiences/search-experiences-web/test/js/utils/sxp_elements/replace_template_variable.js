@@ -37,7 +37,7 @@ describe('replaceTemplateVariable', () => {
 				},
 			})
 		).toEqual({
-			start_date: 20210101,
+			start_date: '20210101',
 		});
 	});
 

@@ -69,23 +69,12 @@ export default function replaceTemplateVariable({
 					);
 				}
 				else if (config.type === INPUT_TYPES.DATE) {
-					if (!initialConfigValue) {
-						configValue = '';
-					}
-					else {
-						try {
-							configValue = JSON.parse(
-								dateUtils.format(
-									new Date(initialConfigValue * 1000),
-									config.typeOptions?.format ||
-										'yyyyMMddhhmmss'
-								)
-							);
-						}
-						catch {
-							configValue = '';
-						}
-					}
+					configValue = initialConfigValue
+						? dateUtils.format(
+								new Date(initialConfigValue * 1000),
+								config.typeOptions?.format || 'yyyyMMddhhmmss'
+							)
+						: '';
 				}
 				else if (config.type === INPUT_TYPES.ITEM_SELECTOR) {
 					configValue = JSON.stringify(
