@@ -39,6 +39,8 @@ import org.osgi.service.component.annotations.Reference;
 public class SearchResultsPortletSharedSearchContributor
 	implements PortletSharedSearchContributor {
 
+	public static final int TRACK_TOTAL_HITS_LIMIT = 10001;
+
 	@Override
 	public void contribute(
 		PortletSharedSearchSettings portletSharedSearchSettings) {
@@ -126,7 +128,7 @@ public class SearchResultsPortletSharedSearchContributor
 				searchContext.getCompanyId(), "LPD-98858") &&
 			_isLimitResultCountAccuracy(portletSharedSearchSettings)) {
 
-			searchRequestBuilder.trackTotalHitsLimit(_TRACK_TOTAL_HITS_LIMIT);
+			searchRequestBuilder.trackTotalHitsLimit(TRACK_TOTAL_HITS_LIMIT);
 		}
 
 		int paginationStart = GetterUtil.getInteger(
@@ -145,8 +147,6 @@ public class SearchResultsPortletSharedSearchContributor
 			searchRequestBuilder.from((paginationStart - 1) * paginationDelta);
 		}
 	}
-
-	private static final int _TRACK_TOTAL_HITS_LIMIT = 10001;
 
 	@Reference
 	private ConfigurationProvider _configurationProvider;

@@ -39,8 +39,7 @@ public interface SearchResultsPortletInstanceConfiguration {
 	public long displayStyleGroupId();
 
 	@Meta.AD(
-		deflt = "true", description = "limit-result-count-accuracy-help",
-		name = "limit-result-count-accuracy", required = false
+		deflt = "true", name = "limit-result-count-accuracy", required = false
 	)
 	public boolean limitResultCountAccuracy();
 

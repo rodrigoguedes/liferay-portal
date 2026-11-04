@@ -20,6 +20,7 @@ page import="com.liferay.portal.search.web.internal.search.results.configuration
 page import="com.liferay.portal.search.web.internal.search.results.portlet.SearchResultsPortletDisplayContext" %><%@
 page import="com.liferay.portal.search.web.internal.search.results.portlet.SearchResultsPortletPreferences" %><%@
 page import="com.liferay.portal.search.web.internal.search.results.portlet.SearchResultsPortletPreferencesImpl" %><%@
+page import="com.liferay.portal.search.web.internal.search.results.portlet.helper.ResultCountAccuracyHelper" %><%@
 page import="com.liferay.portal.search.web.internal.util.PortletPreferencesJspUtil" %>
 
 <portlet:defineObjects />
@@ -75,7 +76,10 @@ SearchResultsPortletPreferences searchResultsPortletPreferences = new SearchResu
 			<%
 			boolean limitResultCountAccuracyFeatureFlagEnabled = searchResultsPortletDisplayContext.isLimitResultCountAccuracyFeatureFlagEnabled();
 
-			String limitResultCountAccuracyHelpMessage = LanguageUtil.get(request, "limit-result-count-accuracy-help");
+			ResultCountAccuracyHelper resultCountAccuracyHelper = (ResultCountAccuracyHelper)request.getAttribute(ResultCountAccuracyHelper.class.getName());
+
+			String limitResultCountAccuracyHelpMessage = LanguageUtil.format(request, "limit-result-count-accuracy-x-help", resultCountAccuracyHelper.getLimit(), false);
+
 			String limitResultCountAccuracyInputName = SearchResultsPortletPreferences.PREFERENCE_KEY_LIMIT_RESULT_COUNT_ACCURACY;
 
 			if (limitResultCountAccuracyFeatureFlagEnabled) {

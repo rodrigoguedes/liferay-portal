@@ -16,6 +16,7 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.portal.search.web.internal.search.results.portlet.helper.ResultCountAccuracyHelper;
 
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletRequest;
@@ -67,6 +68,9 @@ public class SearchResultsPortletInstanceConfigurationRenderer
 			HttpServletResponse httpServletResponse)
 		throws IOException {
 
+		httpServletRequest.setAttribute(
+			ResultCountAccuracyHelper.class.getName(),
+			_resultCountAccuracyHelper);
 		httpServletRequest.setAttribute(
 			SearchResultsPortletInstanceConfiguration.class.getName(),
 			_getSearchResultsPortletInstanceConfiguration(httpServletRequest));
@@ -133,6 +137,9 @@ public class SearchResultsPortletInstanceConfigurationRenderer
 
 	@Reference
 	private Portal _portal;
+
+	@Reference
+	private ResultCountAccuracyHelper _resultCountAccuracyHelper;
 
 	@Reference(
 		target = "(osgi.web.symbolicname=com.liferay.portal.search.web)",
